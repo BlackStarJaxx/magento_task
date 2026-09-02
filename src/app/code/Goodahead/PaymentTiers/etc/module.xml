@@ -6,6 +6,8 @@
             <module name="Magento_Payment"/>
             <module name="Magento_Quote"/>
             <module name="Magento_Directory"/>
+            <module name="Magento_Sales"/>
+            <module name="StripeIntegration_Payments"/>
         </sequence>
     </module>
 </config>

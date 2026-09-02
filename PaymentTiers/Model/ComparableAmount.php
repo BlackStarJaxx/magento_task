@@ -7,6 +7,7 @@ namespace Goodahead\PaymentTiers\Model;
 use Goodahead\PaymentTiers\Model\Config\Source\CurrencyMode;
 use Magento\Directory\Model\CurrencyFactory;
 use Magento\Quote\Api\Data\CartInterface;
+use Magento\Sales\Api\Data\OrderInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -26,7 +27,7 @@ use Psr\Log\LoggerInterface;
  * The base total is used rather than the display total: the store's own books are kept in
  * base currency, and it does not shift when a customer switches display currency.
  */
-class QuoteAmount
+class ComparableAmount
 {
     private const USD = 'USD';
 
@@ -41,10 +42,31 @@ class QuoteAmount
     /**
      * Null means "cannot be determined" — the caller must then fail closed, never open.
      */
-    public function getComparableMinorUnits(CartInterface $quote, ?int $websiteId = null): ?int
+    public function fromQuote(CartInterface $quote, ?int $websiteId = null): ?int
     {
-        $baseTotal = (string)sprintf('%.8F', (float)$quote->getBaseGrandTotal());
-        $baseCurrency = (string)$quote->getBaseCurrencyCode();
+        return $this->convert(
+            (float)$quote->getBaseGrandTotal(),
+            (string)$quote->getBaseCurrencyCode(),
+            $websiteId
+        );
+    }
+
+    /**
+     * The order is the anchor at placement time: it is built server-side from the quote, so
+     * a client that replays an old intent cannot move it.
+     */
+    public function fromOrder(OrderInterface $order, ?int $websiteId = null): ?int
+    {
+        return $this->convert(
+            (float)$order->getBaseGrandTotal(),
+            (string)$order->getBaseCurrencyCode(),
+            $websiteId
+        );
+    }
+
+    private function convert(float $baseGrandTotal, string $baseCurrency, ?int $websiteId): ?int
+    {
+        $baseTotal = sprintf('%.8F', $baseGrandTotal);
 
         if ($this->tierProvider->getCurrencyMode($websiteId) === CurrencyMode::BASE_CURRENCY
             || $baseCurrency === self::USD

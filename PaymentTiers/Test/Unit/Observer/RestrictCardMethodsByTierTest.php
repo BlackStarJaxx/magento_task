@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Goodahead\PaymentTiers\Test\Unit\Observer;
 
 use Goodahead\PaymentTiers\Model\CardBrand;
-use Goodahead\PaymentTiers\Model\QuoteAmount;
+use Goodahead\PaymentTiers\Model\ComparableAmount;
 use Goodahead\PaymentTiers\Model\RestrictedMethods;
 use Goodahead\PaymentTiers\Model\Tier;
 use Goodahead\PaymentTiers\Model\TierProvider;
@@ -121,8 +121,8 @@ class RestrictCardMethodsByTierTest extends TestCase
         $methods = $this->createStub(RestrictedMethods::class);
         $methods->method('isRestrictable')->willReturn($restrictable);
 
-        $quoteAmount = $this->createStub(QuoteAmount::class);
-        $quoteAmount->method('getComparableMinorUnits')->willReturn($amount);
+        $comparableAmount = $this->createStub(ComparableAmount::class);
+        $comparableAmount->method('fromQuote')->willReturn($amount);
 
         $store = $this->createStub(StoreInterface::class);
         $store->method('getWebsiteId')->willReturn(1);
@@ -130,7 +130,7 @@ class RestrictCardMethodsByTierTest extends TestCase
         $storeManager = $this->createStub(StoreManagerInterface::class);
         $storeManager->method('getStore')->willReturn($store);
 
-        return new RestrictCardMethodsByTier($provider, $resolver, $methods, $quoteAmount, $storeManager, new NullLogger());
+        return new RestrictCardMethodsByTier($provider, $resolver, $methods, $comparableAmount, $storeManager, new NullLogger());
     }
 
     private function method(string $code): MethodInterface

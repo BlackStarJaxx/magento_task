@@ -37,6 +37,16 @@
                     <comment><![CDATA[Upper bounds are <b>inclusive</b>: a total of exactly 10,000.00 belongs to the tier bounded at 10000.00. Exactly one tier must have an empty upper bound. Card brands are comma separated (visa, mastercard, amex, discover, diners, jcb, unionpay, cartes_bancaires); leave empty to allow no cards at all. Check / Money Order and Bank Transfer are always available and cannot be restricted here.]]></comment>
                 </field>
             </group>
+            <group id="methods" translate="label" type="text" sortOrder="30"
+                   showInDefault="1" showInWebsite="1" showInStore="0">
+                <label>Restricted methods</label>
+                <field id="restricted" translate="label comment" type="multiselect" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="0" canRestore="1">
+                    <label>Card methods governed by tiers</label>
+                    <source_model>Magento\Payment\Model\Config\Source\Allmethods</source_model>
+                    <comment><![CDATA[Methods hidden when a tier allows no cards. Check / Money Order and Bank Transfer are filtered out in code even if selected here, so AC-8 cannot be broken from the admin panel.]]></comment>
+                </field>
+            </group>
         </section>
     </system>
 </config>

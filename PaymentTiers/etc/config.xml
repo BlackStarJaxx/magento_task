@@ -21,6 +21,16 @@
                     {"upper_bound":"","brands":"","message":"Orders over $20,000 cannot be paid by card. Please use Check / Money Order or Bank Transfer."}
                 ]]]></rows>
             </tiers>
+            <methods>
+                <!--
+                    Method codes a tier may hide. Stripe registers six; the four listed take a
+                    card at checkout and therefore carry the chargeback exposure this module
+                    exists to cap. stripe_payments_invoice and stripe_payments_bank_transfers
+                    are deliberately absent - they are not card payments. Check / Money Order
+                    and Bank Transfer can never be added here; the code filters them out.
+                -->
+                <restricted>stripe_payments,stripe_payments_express,stripe_payments_checkout,stripe_payments_subscriptions</restricted>
+            </methods>
         </goodahead_payment_tiers>
     </default>
 </config>

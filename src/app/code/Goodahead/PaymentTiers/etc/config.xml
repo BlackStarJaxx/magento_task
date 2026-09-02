@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <goodahead_payment_tiers>
+            <general>
+                <enabled>1</enabled>
+                <!-- USD is the currency the thresholds are stated in. See ADR on AC-6. -->
+                <currency_mode>convert_to_usd</currency_mode>
+            </general>
+            <tiers>
+                <!--
+                    Rows are ordered by upper_bound; exactly one row must have an empty
+                    upper_bound and it is the unbounded top tier. Bounds are INCLUSIVE:
+                    a total of exactly 10000.00 belongs to the first row.
+                    brands: comma-separated Stripe card.brand codes; empty means no cards.
+                -->
+                <rows><![CDATA[[
+                    {"upper_bound":"10000.00","brands":"visa,mastercard,amex,discover,diners,jcb,unionpay,cartes_bancaires","message":""},
+                    {"upper_bound":"20000.00","brands":"amex","message":"For orders over $10,000 we can only accept American Express. Other cards will be declined."},
+                    {"upper_bound":"","brands":"","message":"Orders over $20,000 cannot be paid by card. Please use Check / Money Order or Bank Transfer."}
+                ]]]></rows>
+            </tiers>
+        </goodahead_payment_tiers>
+    </default>
+</config>

@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="goodahead_payment_tiers" translate="label" type="text" sortOrder="900"
+                 showInDefault="1" showInWebsite="1" showInStore="0">
+            <class>separator-top</class>
+            <label>Payment Tiers</label>
+            <tab>sales</tab>
+            <resource>Goodahead_PaymentTiers::config</resource>
+
+            <group id="general" translate="label" type="text" sortOrder="10"
+                   showInDefault="1" showInWebsite="1" showInStore="0">
+                <label>General</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="0" canRestore="1">
+                    <label>Enable payment tiers</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When disabled, no restriction is applied and checkout behaves as it would without this module.</comment>
+                </field>
+                <field id="currency_mode" translate="label comment" type="select" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="0" canRestore="1">
+                    <label>Currency handling</label>
+                    <source_model>Goodahead\PaymentTiers\Model\Config\Source\CurrencyMode</source_model>
+                    <comment><![CDATA[Thresholds are stated in USD. Converting means the same exposure limit applies on every website, but the tier then depends on the exchange rate an administrator maintains. Comparing the base currency directly is stable, but "10,000" then means 10,000 units of whatever the store sells in.]]></comment>
+                </field>
+            </group>
+
+            <group id="tiers" translate="label" type="text" sortOrder="20"
+                   showInDefault="1" showInWebsite="1" showInStore="0">
+                <label>Tiers</label>
+                <field id="rows" translate="label comment" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="0">
+                    <label>Tier table</label>
+                    <frontend_model>Goodahead\PaymentTiers\Block\Adminhtml\Form\Field\Tiers</frontend_model>
+                    <backend_model>Goodahead\PaymentTiers\Model\Config\Backend\Tiers</backend_model>
+                    <comment><![CDATA[Upper bounds are <b>inclusive</b>: a total of exactly 10,000.00 belongs to the tier bounded at 10000.00. Exactly one tier must have an empty upper bound. Card brands are comma separated (visa, mastercard, amex, discover, diners, jcb, unionpay, cartes_bancaires); leave empty to allow no cards at all. Check / Money Order and Bank Transfer are always available and cannot be restricted here.]]></comment>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

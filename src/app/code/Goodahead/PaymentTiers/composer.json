@@ -1,0 +1,19 @@
+{
+    "name": "goodahead/module-payment-tiers",
+    "description": "Restricts card payment options by order grand total.",
+    "type": "magento2-module",
+    "license": "proprietary",
+    "require": {
+        "php": "~8.3.0||~8.4.0||~8.5.0",
+        "magento/framework": "*",
+        "magento/module-payment": "*",
+        "magento/module-quote": "*",
+        "magento/module-directory": "*"
+    },
+    "autoload": {
+        "files": ["registration.php"],
+        "psr-4": {
+            "Goodahead\\PaymentTiers\\": ""
+        }
+    }
+}

@@ -30,15 +30,15 @@ use Psr\Log\LoggerInterface;
  * visible on purpose: AC-2 requires the card option to still be shown above $10,000, with
  * the Amex-only restriction stated before the customer starts typing.
  */
-readonly class RestrictCardMethodsByTier implements ObserverInterface
+class RestrictCardMethodsByTier implements ObserverInterface
 {
     public function __construct(
-        private TierProvider          $tierProvider,
-        private TierResolver          $tierResolver,
-        private RestrictedMethods     $restrictedMethods,
-        private QuoteAmount           $quoteAmount,
-        private StoreManagerInterface $storeManager,
-        private LoggerInterface       $logger
+        private readonly TierProvider $tierProvider,
+        private readonly TierResolver $tierResolver,
+        private readonly RestrictedMethods $restrictedMethods,
+        private readonly QuoteAmount $quoteAmount,
+        private readonly StoreManagerInterface $storeManager,
+        private readonly LoggerInterface $logger
     ) {
     }
 

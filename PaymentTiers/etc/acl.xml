@@ -4,8 +4,12 @@
     <acl>
         <resources>
             <resource id="Magento_Backend::admin">
-                <resource id="Magento_Config::config">
-                    <resource id="Goodahead_PaymentTiers::config" title="Payment Tiers Section" sortOrder="900"/>
+                <resource id="Magento_Backend::stores">
+                    <resource id="Magento_Backend::stores_settings">
+                        <resource id="Magento_Config::config">
+                            <resource id="Goodahead_PaymentTiers::config" title="Payment Tiers Section" translate="title" sortOrder="900"/>
+                        </resource>
+                    </resource>
                 </resource>
             </resource>
         </resources>

@@ -49,8 +49,8 @@ cp docs/verification/part1-selftest.php src/app/code/ \
   && bin/cli php app/code/part1-selftest.php; rm -f src/app/code/part1-selftest.php
 
 cp docs/verification/finance-stub.php src/app/code/
-docker compose exec -d phpfpm php -S 0.0.0.0:8099 /var/www/html/app/code/finance-stub.php
-bin/magento config:set goodahead_ordersync/endpoint/url http://127.0.0.1:8099/orders
+docker compose exec -d -e PHP_CLI_SERVER_WORKERS=4 phpfpm \
+  php -S 0.0.0.0:8099 /var/www/html/app/code/finance-stub.php
 cp docs/verification/part2-selftest.php src/app/code/ \
   && bin/cli php app/code/part2-selftest.php; rm -f src/app/code/part2-selftest.php
 ```
@@ -61,7 +61,7 @@ to a terminal failure and back. Evidence is in [`docs/verification/`](docs/verif
 decisions are in [`docs/adr/`](docs/adr).
 
 Three things need eyes: between $10,000 and $20,000 the checkout shows the restriction with the
-card option still offered and the wallet buttons gone; above $20,000 the card option goes too;
+card option and the wallet buttons still offered; above $20,000 both go;
 and editing the cart in a second tab updates the message and the method list without a reload.
 
 ## Configuration
@@ -73,6 +73,7 @@ Stores → Configuration → Sales → **Payment Tiers** (website scope) and **O
 | `goodahead_payment_tiers/general/enabled` | `1` |
 | `goodahead_payment_tiers/general/currency_mode` | `convert_to_usd` |
 | `goodahead_payment_tiers/tiers/rows` | `10000.00` all brands · `20000.00` amex · unbounded, none |
+| ↳ per-tier columns | upper bound · allowed brands · **allowed methods** (blank = all) · customer message |
 | `goodahead_payment_tiers/methods/restricted` | the four Stripe methods that take a card |
 | `goodahead_ordersync/endpoint/url` | `https://example.invalid/orders` |
 | `goodahead_ordersync/endpoint/timeout` | `10` seconds |
@@ -80,15 +81,21 @@ Stores → Configuration → Sales → **Payment Tiers** (website scope) and **O
 | `goodahead_ordersync/retry/base_delay` · `max_delay` | `60` · `3600` seconds, doubling with jitter |
 
 Tier bounds are **inclusive**, exactly one tier must be unbounded, and a tier that narrows
-brands must carry a customer message — all enforced when the configuration is saved.
+brands must carry a customer message — all enforced when the configuration is saved, along
+with unknown brands, unknown method codes, duplicate bounds and an offline method placed in
+the methods column.
+
+The methods column narrows the governed methods for one tier; blank means the tier says
+nothing about methods and only the brand rule applies, which is what the defaults do.
 
 ## Part 1 — where enforcement sits
 
 | Layer | Where | Does |
 |---|---|---|
 | Presentation | observer on `payment_method_is_active` | hides card methods when no brand is allowed |
-| Presentation | plugin on Stripe's `ExpressCheckout\Config::isEnabled` | hides wallet buttons in any restricted tier |
+| Presentation | plugin on Stripe's `ExpressCheckout\Config::isEnabled` | hides wallet buttons when no card is allowed |
 | **Enforcement** | plugin on `Helper\PaymentIntent::getConfirmParams` | refuses the payment before Stripe confirms |
+| **Backstop** | plugin on `PaymentElement::confirm` | checks the brand of a payment confirmed in the browser and releases it |
 
 The third is the one that holds. Reading the vendor source showed the brief's premise — "the
 payment is confirmed from the customer's browser … not against our server" — does not hold for
@@ -99,6 +106,13 @@ before authorisation and a refusal costs nothing: observed refusals leave the in
 
 Everything is recomputed from the **order**, never from the intent, which is what makes a
 replayed intent harmless: its amount takes no part in the decision.
+
+Express wallet buttons and GraphQL do not reach that guard — they confirm in the browser and
+arrive already paid — so the backstop reads the brand from the charge afterwards and releases
+the money when it is not allowed. Restricted tiers force `capture_method: manual` so that
+releasing is a hold being dropped rather than a refund being issued. Verified against the
+sandbox: a Visa confirmed with manual capture reads back as `card / visa / 4242`, sits at
+`requires_capture` with `amount_received = 0.00`, and ends `canceled` after the release.
 
 ## Part 2 — how delivery is guaranteed
 
@@ -134,6 +148,10 @@ products, against ~42 s for the save-per-product mechanism AC-14 rules out
 - **"Paid" means authorised or captured.** An authorisation is a committed claim finance will
   reconcile. AC-15 excludes only a *failed* capture, and an unpaid offline order fires nothing.
 - **409 from the endpoint is a success**, not a failure — it means an earlier attempt landed.
+- **Wallets stay on offer in the brand-restricted tier**, because AC-5 wants an Amex-funded one
+  accepted there. They are only hidden when no card is allowed at all. What makes that safe is
+  the backstop plus manual capture: a wallet funded by the wrong brand is caught immediately
+  after confirmation and the hold released, so nothing is ever captured from it.
 - **Cancellation applies only to orders Magento will cancel**, i.e. authorised but not
   captured. A captured order is reversed with a credit memo, which the brief puts out of scope.
 - **`last_purchased_at` is not rolled back** on cancellation. It records that a purchase
@@ -157,13 +175,12 @@ products, against ~42 s for the save-per-product mechanism AC-14 rules out
 
 ## What was cut
 
-- **The post-confirmation backstop.** Express wallet buttons and GraphQL confirm in the browser
-  and arrive already paid, so the placement guard never runs for them. Rather than leave a hole,
-  wallet buttons are hidden in *every* restricted tier — stricter than AC-5 asks, and it also
-  refuses the Amex-funded wallet AC-5 wants accepted. This is the one acceptance criterion not
-  fully met, and the first thing to finish.
-- **`capture_method: manual` in restricted tiers**, which only matters once that backstop
-  exists, so an unwind is an authorisation released rather than a refund issued.
+- **A wallet payment driven through a real Apple Pay or Google Pay sheet.** The backstop and
+  the release are verified against the sandbox with a confirmed manual-capture intent, and the
+  decision logic is unit-tested, but no payment has been pushed through an actual wallet UI —
+  those need domain verification that a local host cannot have.
+- **A repeated Stripe webhook.** Duplicate delivery is exercised with duplicate queue messages
+  and duplicate registration; replaying a real webhook needs `stripe listen` and was not run.
 - **Integration tests.** Both self-tests are scripts run by hand rather than by CI.
 - **A brand multiselect in the admin.** The tier table uses validated text columns; the brief
   puts admin UI beyond a `system.xml` section out of scope.
@@ -172,9 +189,9 @@ products, against ~42 s for the save-per-product mechanism AC-14 rules out
 
 ## What another week would buy
 
-The backstop first: verify the brand on the order's paid transition, void the uncaptured
-authorisation and cancel the order when it does not match, then re-enable wallets in the middle
-tier and close AC-5 properly. Then move both self-tests into Magento integration tests so the
-refusal and retry paths are covered by CI rather than by a script, add a non-USD website to the
-fixtures, and put a small admin grid over the dispatch ledger so an operator does not need SSH
-to see a terminal failure.
+Drive a payment through a real wallet sheet on a verified domain, and replay a Stripe webhook
+with the CLI, so the two paths that are currently reasoned about and unit-tested are observed
+as well. Then move both self-tests into Magento integration tests so the refusal and retry
+paths are covered by CI rather than by a script, add a non-USD website to the fixtures, and put
+a small admin grid over the dispatch ledger so an operator does not need SSH to see a terminal
+failure.

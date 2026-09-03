@@ -3,6 +3,10 @@
 Two commands prove most of it. The rest needs eyes, and two things need a Stripe account you
 control.
 
+Every command below runs where the store's PHP runs — inside the container, for a Docker
+setup — with the Magento root as the working directory. These modules sit at
+`app/code/Goodahead`, so the paths are written from there.
+
 Prices below assume this store's 20% cart rule, so watch the **Order Total**, not the price.
 `WJ12-XS-Blue` costs $10,000, which puts each tier one quantity apart:
 
@@ -17,15 +21,14 @@ Prices below assume this store's 20% cart rule, so watch the **Order Total**, no
 ## 1. Automated (5 minutes)
 
 ```bash
-./qa.sh
+app/code/Goodahead/qa.sh
 ```
 
-Expect `All checks passed`: phpcs with zero errors, PHPStan level 8 on both modules, 114 unit
+Expect `All checks passed`: phpcs with zero errors, PHPStan level 8 on both modules, 116 unit
 tests, and the two Definition-of-Done greps.
 
 ```bash
-cp docs/verification/part1-selftest.php src/app/code/ \
-  && bin/cli php app/code/part1-selftest.php; rm -f src/app/code/part1-selftest.php
+php app/code/Goodahead/docs/verification/part1-selftest.php
 ```
 
 Expect `All Part 1 checks passed`. It places real orders through
@@ -36,13 +39,14 @@ For Part 2, start the stub first. The endpoint in the brief never resolves, so n
 succeed without it:
 
 ```bash
-cp docs/verification/finance-stub.php src/app/code/
-docker compose exec -d -e PHP_CLI_SERVER_WORKERS=4 phpfpm \
-  php -S 0.0.0.0:8099 /var/www/html/app/code/finance-stub.php
+PHP_CLI_SERVER_WORKERS=4 php -S 0.0.0.0:8099 \
+  app/code/Goodahead/docs/verification/finance-stub.php &
 
-cp docs/verification/part2-selftest.php src/app/code/ \
-  && bin/cli php app/code/part2-selftest.php; rm -f src/app/code/part2-selftest.php
+php app/code/Goodahead/docs/verification/part2-selftest.php
 ```
+
+`PHP_CLI_SERVER_WORKERS` matters: the built-in server is single threaded without it, so the
+stub's timeout mode would block every later request instead of only its own.
 
 Expect `All Part 2 checks passed`. It points the module at the stub and puts every setting
 back afterwards, even if it fails half way.
@@ -123,7 +127,7 @@ bin/magento goodahead:ordersync:retry
 Within a minute `status` shows `succeeded`. Then look at what the endpoint holds:
 
 ```bash
-bin/cli sh -c "curl -s localhost:8099/_state"
+curl -s localhost:8099/_state
 ```
 
 The line that matters is `attempts` against `distinct_deliveries`: however many times we tried,
@@ -132,7 +136,7 @@ the endpoint holds one logical delivery per event.
 Break it deliberately:
 
 ```bash
-bin/cli sh -c "curl -s -X POST 'localhost:8099/_mode?mode=500'"   # or 429, 409, timeout, flaky
+curl -s -X POST 'localhost:8099/_mode?mode=500'   # or 429, 409, timeout, flaky
 ```
 
 `409` is worth trying: it is treated as **success**, because it means an earlier attempt landed

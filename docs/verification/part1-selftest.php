@@ -1,14 +1,23 @@
 <?php
 /**
- * Part 1 self-test. Run from the repository root:
+ * Part 1 self-test. Run from the Magento root, where the PHP tooling is:
  *
- *   cp docs/verification/part1-selftest.php src/app/code/ \
- *     && bin/cli php app/code/part1-selftest.php; rm -f src/app/code/part1-selftest.php
+ *   php app/code/Goodahead/docs/verification/part1-selftest.php
  *
  * Places real orders in the Stripe sandbox using Stripe's shared test payment methods.
  * Exits non-zero if any check fails.
  */
-require '/var/www/html/app/bootstrap.php';
+// Walk up to the Magento root rather than naming a container path: these scripts live
+// wherever the modules were installed.
+$magentoRoot = __DIR__;
+while ($magentoRoot !== '/' && !is_file($magentoRoot . '/app/bootstrap.php')) {
+    $magentoRoot = dirname($magentoRoot);
+}
+if ($magentoRoot === '/') {
+    fwrite(STDERR, "Not inside a Magento installation: no app/bootstrap.php above " . __DIR__ . "\n");
+    exit(1);
+}
+require $magentoRoot . '/app/bootstrap.php';
 
 $bootstrap = \Magento\Framework\App\Bootstrap::create(BP, $_SERVER);
 $om = $bootstrap->getObjectManager();

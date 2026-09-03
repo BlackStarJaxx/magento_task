@@ -159,8 +159,10 @@ blocks to satisfy a sniff makes the code worse. See
 **Only four paths are bind-mounted from the host** (`compose.dev.yaml`): `src/app/code`,
 `src/app/design`, `src/app/etc`, and the two composer files. `vendor/`, `var/`, `generated/`
 and `pub/` live inside the container volume and are invisible from the host. A throwaway
-verification script must therefore be written to `src/app/code/` and bootstrapped with an
-absolute path (`require '/var/www/html/app/bootstrap.php';`). Delete it afterwards.
+verification script must therefore be written under `src/app/code/` to be visible at all, and
+delete it afterwards. Bootstrap it the way the shipped self-tests do — walk up from `__DIR__`
+until `app/bootstrap.php` appears — rather than naming the container path, so the script keeps
+working wherever the modules are installed.
 
 The DB client in the `db` container is `mariadb`, not `mysql`.
 

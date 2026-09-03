@@ -1,21 +1,29 @@
 <?php
 /**
- * Part 2 self-test. Needs the finance stub running:
+ * Part 2 self-test. Needs the finance stub running beside it:
  *
- *   cp docs/verification/finance-stub.php src/app/code/
- *   docker compose exec -d phpfpm php -S 0.0.0.0:8099 /var/www/html/app/code/finance-stub.php
+ *   PHP_CLI_SERVER_WORKERS=4 php -S 0.0.0.0:8099 \
+ *       app/code/Goodahead/docs/verification/finance-stub.php &
  *
  * The endpoint is pointed at the stub for the duration of the run and restored afterwards.
+ * Then, from the Magento root:
  *
- * Then:
- *
- *   cp docs/verification/part2-selftest.php src/app/code/ \
- *     && bin/cli php app/code/part2-selftest.php; rm -f src/app/code/part2-selftest.php
+ *   php app/code/Goodahead/docs/verification/part2-selftest.php
  *
  * Places real orders, delivers them through the real retry path, and asserts what both sides
  * ended up holding. Exits non-zero if any check fails.
  */
-require '/var/www/html/app/bootstrap.php';
+// Walk up to the Magento root rather than naming a container path: these scripts live
+// wherever the modules were installed.
+$magentoRoot = __DIR__;
+while ($magentoRoot !== '/' && !is_file($magentoRoot . '/app/bootstrap.php')) {
+    $magentoRoot = dirname($magentoRoot);
+}
+if ($magentoRoot === '/') {
+    fwrite(STDERR, "Not inside a Magento installation: no app/bootstrap.php above " . __DIR__ . "\n");
+    exit(1);
+}
+require $magentoRoot . '/app/bootstrap.php';
 
 use Goodahead\OrderSync\Model\Dispatch\EventType;
 

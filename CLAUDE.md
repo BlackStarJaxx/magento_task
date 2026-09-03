@@ -225,5 +225,15 @@ Four are decisions this module took and should stay consistent with:
   `stores_settings` → `Magento_Config::config`) with no `title` on re-declared parents.
   Getting it wrong breaks every admin page with "Could not create an acl object", and the
   error names an unrelated core module as the file it failed on.
+- **Frontend asset changes need the static version bumped**, or the browser keeps serving the
+  old file and a "fix" appears not to work. Static URLs carry `/static/version<n>/`, read from
+  `pub/static/deployed_version.txt`. Write it with `printf`, never `date +%s >` — a trailing
+  newline lands inside every static URL and takes the whole frontend down.
+- **Navigating to the same URL with the same `#fragment` does not reload the page.** A test
+  that "reloads" that way is testing the old code.
+- **`Api/Data` interfaces need `@return` annotations**, even with PHP return types declared.
+  Magento's service-contract reflection reads the docblock; without it any REST call that
+  serialises the type dies with "Method's return type must be specified using @return
+  annotation". This is the one place the comment policy above yields to a hard requirement.
 - **The admin configuration form is table markup**, not `.admin__field` divs: each field is a
   `<tr id="row_{section}_{group}_{field}">` with `<td class="label">` and `<td class="value">`.

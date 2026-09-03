@@ -1,0 +1,18 @@
+{
+    "name": "goodahead/module-order-sync",
+    "description": "Pushes placed and cancelled orders to an external finance system, exactly once.",
+    "type": "magento2-module",
+    "license": "proprietary",
+    "require": {
+        "php": "~8.3.0||~8.4.0||~8.5.0",
+        "magento/framework": "*",
+        "magento/module-sales": "*",
+        "magento/module-catalog": "*"
+    },
+    "autoload": {
+        "files": ["registration.php"],
+        "psr-4": {
+            "Goodahead\\OrderSync\\": ""
+        }
+    }
+}

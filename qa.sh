@@ -8,7 +8,7 @@
 set -uo pipefail
 
 MODULE_ROOT="app/code/Goodahead"
-PHPSTAN_CONFIG="${MODULE_ROOT}/PaymentTiers/phpstan.neon"
+PHPSTAN_CONFIGS="${MODULE_ROOT}/PaymentTiers/phpstan.neon ${MODULE_ROOT}/OrderSync/phpstan.neon"
 
 bold=$'\033[1m'; red=$'\033[31m'; green=$'\033[32m'; off=$'\033[0m'
 failed=()
@@ -31,8 +31,10 @@ run() {
 run "Coding standards (Magento2)" \
     "vendor/bin/phpcs --standard=Magento2 --warning-severity=0 ${MODULE_ROOT} 2>/dev/null"
 
-run "Static analysis (PHPStan, level in ${PHPSTAN_CONFIG})" \
-    "vendor/bin/phpstan analyse --no-progress -c ${PHPSTAN_CONFIG}"
+for config in ${PHPSTAN_CONFIGS}; do
+    run "Static analysis (PHPStan) - $(basename "$(dirname "${config}")")" \
+        "vendor/bin/phpstan analyse --no-progress -c ${config}"
+done
 
 # --no-extensions: this installation ships Allure without its config file, so the extension
 # fails to bootstrap and turns a passing run into exit code 1. Disabling extensions drops

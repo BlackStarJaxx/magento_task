@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:Event/etc/events.xsd">
+    <event name="sales_order_save_after">
+        <observer name="goodahead_ordersync_register_paid_order"
+                  instance="Goodahead\OrderSync\Observer\RegisterPaidOrder"/>
+    </event>
+
+    <event name="order_cancel_after">
+        <observer name="goodahead_ordersync_register_cancelled_order"
+                  instance="Goodahead\OrderSync\Observer\RegisterCancelledOrder"/>
+    </event>
+</config>

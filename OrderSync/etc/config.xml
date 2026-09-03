@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Store:etc/config.xsd">
+    <default>
+        <goodahead_ordersync>
+            <general>
+                <enabled>1</enabled>
+            </general>
+            <endpoint>
+                <url>https://example.invalid/orders</url>
+                <timeout>10</timeout>
+            </endpoint>
+            <retry>
+                <max_attempts>6</max_attempts>
+                <base_delay>60</base_delay>
+                <max_delay>3600</max_delay>
+            </retry>
+        </goodahead_ordersync>
+    </default>
+</config>

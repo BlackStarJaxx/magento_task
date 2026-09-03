@@ -3,7 +3,7 @@
         xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Cron:etc/crontab.xsd">
     <group id="default">
         <job name="goodahead_ordersync_sweep"
-             instance="Goodahead\OrderSync\Model\Cron\DispatchSweeper"
+             instance="Goodahead\OrderSync\Cron\DispatchSweeper"
              method="execute">
             <schedule>* * * * *</schedule>
         </job>

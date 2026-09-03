@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Goodahead\OrderSync\Model\Cron;
+namespace Goodahead\OrderSync\Cron;
 
 use Goodahead\OrderSync\Model\Config;
 use Goodahead\OrderSync\Model\Dispatch\DeliveryProcessor;

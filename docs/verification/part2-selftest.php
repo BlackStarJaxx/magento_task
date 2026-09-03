@@ -26,7 +26,7 @@ $om->get(\Magento\Store\Model\StoreManagerInterface::class)->setCurrentStore(1);
 
 $connection = $om->get(\Magento\Framework\App\ResourceConnection::class)->getConnection();
 $ledger = $om->get(\Goodahead\OrderSync\Model\ResourceModel\Dispatch::class);
-$sweeper = $om->get(\Goodahead\OrderSync\Model\Cron\DispatchSweeper::class);
+$sweeper = $om->get(\Goodahead\OrderSync\Cron\DispatchSweeper::class);
 $orderRepository = $om->get(\Magento\Sales\Api\OrderRepositoryInterface::class);
 $configWriter = $om->get(\Magento\Framework\App\Config\Storage\WriterInterface::class);
 $appConfig = $om->get(\Magento\Framework\App\Config::class);

@@ -30,9 +30,15 @@ path, with no special case.
 This holds for the Payment Element flow. Express wallet buttons confirm on the client and
 arrive already successful (ADR-0002 §3); the guard cannot refuse those. That path is covered by
 the backstop instead — a plugin on `PaymentElement::confirm` reads the brand from the charge and
-releases the money when it is not allowed. Restricted tiers force `capture_method: manual`
-(`StampIntentForTier`) so releasing is dropping a hold rather than issuing a refund, and the
-whole thing still happens before the order row is written.
+unwinds the payment when it is not allowed, still before the order row is written.
+
+Forcing `capture_method: manual` there, so the unwind would always be a released hold rather
+than a refund, was implemented and then reverted: Stripe validates the intent's capture method
+against the Elements instance the browser created, and a server-side change alone is refused
+with "The provided capture_method (manual) does not match the expected capture_method
+(automatic)". It cost a working card payment to learn, and only a manual test could have found
+it — the automated checks all bypass Elements. Authorise-only at the Stripe method level is the
+supported way to get the same effect.
 
 ### 2. A card whose brand cannot be established is refused
 

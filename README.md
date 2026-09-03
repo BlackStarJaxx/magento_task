@@ -108,11 +108,15 @@ Everything is recomputed from the **order**, never from the intent, which is wha
 replayed intent harmless: its amount takes no part in the decision.
 
 Express wallet buttons and GraphQL do not reach that guard — they confirm in the browser and
-arrive already paid — so the backstop reads the brand from the charge afterwards and releases
-the money when it is not allowed. Restricted tiers force `capture_method: manual` so that
-releasing is a hold being dropped rather than a refund being issued. Verified against the
-sandbox: a Visa confirmed with manual capture reads back as `card / visa / 4242`, sits at
-`requires_capture` with `amount_received = 0.00`, and ends `canceled` after the release.
+arrive already paid — so the backstop reads the brand from the charge afterwards and unwinds
+the payment when it is not allowed: it cancels an authorisation that has not been captured, and
+refunds one that has.
+
+Forcing `capture_method: manual` for restricted tiers, so the unwind is always the cheaper of
+the two, was tried and reverted: capture method is part of the contract between the intent and
+the Stripe Elements instance the browser created, and setting it server-side alone makes Stripe
+refuse the confirmation outright. A merchant who wants the cleaner unwind sets Stripe's payment
+action to authorise only, which keeps both sides in agreement.
 
 ## Part 2 — how delivery is guaranteed
 

@@ -10,9 +10,9 @@
                 sortOrder="10"/>
     </type>
 
-    <type name="StripeIntegration\Payments\Model\PaymentIntent">
-        <plugin name="goodahead_payment_tiers_stamp_intent"
-                type="Goodahead\PaymentTiers\Plugin\StampIntentForTier"
+    <type name="StripeIntegration\Payments\Model\Config">
+        <plugin name="goodahead_payment_tiers_stamp_tier_metadata"
+                type="Goodahead\PaymentTiers\Plugin\StampTierOnStripeMetadata"
                 sortOrder="10"/>
     </type>
 

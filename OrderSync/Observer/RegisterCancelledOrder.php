@@ -10,12 +10,14 @@ use Goodahead\OrderSync\Model\ResourceModel\Dispatch as DispatchResource;
 use Magento\Framework\Event\Observer;
 use Magento\Framework\Event\ObserverInterface;
 use Magento\Sales\Api\Data\OrderInterface;
+use Psr\Log\LoggerInterface;
 
 class RegisterCancelledOrder implements ObserverInterface
 {
     public function __construct(
         private readonly DispatchResource $dispatchResource,
-        private readonly DispatchRegistrar $registrar
+        private readonly DispatchRegistrar $registrar,
+        private readonly LoggerInterface $logger
     ) {
     }
 
@@ -27,10 +29,20 @@ class RegisterCancelledOrder implements ObserverInterface
             return;
         }
 
-        if (!$this->dispatchResource->exists((int)$order->getEntityId(), EventType::ORDER_PLACED)) {
-            return;
-        }
+        // exists() is a database read inside Order::cancel(); letting it escape would fail
+        // the cancellation itself.
+        try {
+            if (!$this->dispatchResource->exists((int)$order->getEntityId(), EventType::ORDER_PLACED)) {
+                return;
+            }
 
-        $this->registrar->register($order, EventType::ORDER_CANCELLED);
+            $this->registrar->register($order, EventType::ORDER_CANCELLED);
+        } catch (\Throwable $e) {
+            $this->logger->critical(sprintf(
+                'Goodahead_OrderSync: registering the cancellation of order %s failed. %s',
+                (string)$order->getIncrementId(),
+                $e->getMessage()
+            ));
+        }
     }
 }

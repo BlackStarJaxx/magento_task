@@ -53,6 +53,12 @@
                     <label>Maximum delay (seconds)</label>
                     <validate>validate-digits validate-greater-than-zero</validate>
                 </field>
+                <field id="reconcile_window_days" translate="label comment" type="text" sortOrder="40"
+                       showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Reconciliation window (days)</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment><![CDATA[Cron looks this far back for paid orders that never reached the ledger and registers them. Raise it after a long outage; to catch up on more than this without changing the setting, run <b>bin/magento goodahead:ordersync:reconcile --days=N</b>.]]></comment>
+                </field>
             </group>
         </section>
     </system>

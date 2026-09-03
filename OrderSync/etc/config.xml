@@ -14,6 +14,7 @@
                 <max_attempts>6</max_attempts>
                 <base_delay>60</base_delay>
                 <max_delay>3600</max_delay>
+                <reconcile_window_days>7</reconcile_window_days>
             </retry>
         </goodahead_ordersync>
     </default>

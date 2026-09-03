@@ -9,6 +9,7 @@
             <argument name="commands" xsi:type="array">
                 <item name="goodahead_ordersync_status" xsi:type="object">Goodahead\OrderSync\Console\Command\StatusCommand</item>
                 <item name="goodahead_ordersync_retry" xsi:type="object">Goodahead\OrderSync\Console\Command\RetryCommand</item>
+                <item name="goodahead_ordersync_reconcile" xsi:type="object">Goodahead\OrderSync\Console\Command\ReconcileCommand</item>
             </argument>
         </arguments>
     </type>

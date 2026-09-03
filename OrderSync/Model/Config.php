@@ -15,6 +15,7 @@ class Config
     public const XML_PATH_MAX_ATTEMPTS = 'goodahead_ordersync/retry/max_attempts';
     public const XML_PATH_BASE_DELAY = 'goodahead_ordersync/retry/base_delay';
     public const XML_PATH_MAX_DELAY = 'goodahead_ordersync/retry/max_delay';
+    public const XML_PATH_RECONCILE_DAYS = 'goodahead_ordersync/retry/reconcile_window_days';
 
     public function __construct(private readonly ScopeConfigInterface $scopeConfig)
     {
@@ -44,6 +45,17 @@ class Config
     public function getBaseDelaySeconds(?int $storeId = null): int
     {
         return max(1, (int)$this->scopeConfig->getValue(self::XML_PATH_BASE_DELAY, ScopeInterface::SCOPE_STORE, $storeId));
+    }
+
+    /**
+     * How far back the reconciliation sweep looks for paid orders that never reached the
+     * ledger. Configurable because the right answer depends on the store: long enough to
+     * cover any outage it might have, short enough that installing the module on a store
+     * with history does not announce that history to finance.
+     */
+    public function getReconcileWindowDays(?int $storeId = null): int
+    {
+        return max(1, (int)$this->scopeConfig->getValue(self::XML_PATH_RECONCILE_DAYS, ScopeInterface::SCOPE_STORE, $storeId));
     }
 
     public function getMaxDelaySeconds(?int $storeId = null): int

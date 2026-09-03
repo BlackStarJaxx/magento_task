@@ -29,15 +29,34 @@ class RegisterPaidOrder implements ObserverInterface
     {
         $order = $observer->getEvent()->getData('order');
 
-        if (!$order instanceof OrderInterface || !$this->paidStateDetector->isPaid($order)) {
+        if (!$order instanceof OrderInterface) {
             return;
         }
 
-        if ($this->registrar->register($order, EventType::ORDER_PLACED) === null) {
-            return;
-        }
+        /*
+         * Nothing may escape. This runs on sales_order_save_after, inside the order's own
+         * transaction, so an exception here would roll the order back — the customer would
+         * lose a paid order because the finance push had a bad moment. The reconciliation
+         * sweep in DispatchSweeper picks up anything missed here, so failing quietly loses
+         * nothing but time.
+         */
+        try {
+            if (!$this->paidStateDetector->isPaid($order)) {
+                return;
+            }
 
-        $this->stampPurchaseRecency($order);
+            if ($this->registrar->register($order, EventType::ORDER_PLACED) === null) {
+                return;
+            }
+
+            $this->stampPurchaseRecency($order);
+        } catch (\Throwable $e) {
+            $this->logger->critical(sprintf(
+                'Goodahead_OrderSync: registering order %s failed; the sweep will retry. %s',
+                (string)$order->getIncrementId(),
+                $e->getMessage()
+            ));
+        }
     }
 
     private function stampPurchaseRecency(OrderInterface $order): void

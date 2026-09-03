@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Goodahead\OrderSync\Model\ResourceModel;
 
+use Goodahead\OrderSync\Model\Dispatch\EventType;
 use Goodahead\OrderSync\Model\Dispatch\IdempotencyKey;
 use Goodahead\OrderSync\Model\Dispatch\Record;
 use Goodahead\OrderSync\Model\Dispatch\Status;
@@ -208,6 +209,45 @@ class Dispatch
             ['status' => Status::PENDING, 'attempts' => 0, 'next_attempt_at' => null],
             $where
         );
+    }
+
+    /**
+     * Paid orders that never made it into the ledger.
+     *
+     * The observer is the fast path, but it runs inside the order's transaction and swallows
+     * its own failures rather than rolling an order back. That leaves a gap only this closes:
+     * without it a registration that failed once would never be retried, because retries work
+     * from ledger rows and there is no row.
+     *
+     * The window matters. Installing this module on a store with history must not announce
+     * every order ever placed to the finance system, so only recent orders are considered.
+     *
+     * @return int[] order entity ids
+     */
+    public function findPaidOrdersWithoutDispatch(string $since, int $limit): array
+    {
+        $connection = $this->resourceConnection->getConnection();
+
+        $select = $connection->select()
+            ->from(['o' => $this->resourceConnection->getTableName('sales_order')], ['entity_id'])
+            ->join(
+                ['p' => $this->resourceConnection->getTableName('sales_order_payment')],
+                'p.parent_id = o.entity_id',
+                []
+            )
+            ->joinLeft(
+                ['d' => $this->getTable()],
+                $connection->quoteInto('d.order_id = o.entity_id AND d.event_type = ?', EventType::ORDER_PLACED),
+                []
+            )
+            ->where('d.entity_id IS NULL')
+            ->where('o.state NOT IN (?)', ['new', 'pending_payment', 'canceled'])
+            ->where('p.base_amount_paid > 0 OR p.base_amount_authorized > 0')
+            ->where('o.created_at >= ?', $since)
+            ->order('o.entity_id ASC')
+            ->limit($limit);
+
+        return array_map('intval', $connection->fetchCol($select));
     }
 
     public function getById(int $id): ?Record

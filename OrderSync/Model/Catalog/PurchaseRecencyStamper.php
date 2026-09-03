@@ -80,6 +80,13 @@ class PurchaseRecencyStamper
         }
     }
 
+    /**
+     * Commerce with staging keys EAV values on row_id rather than entity_id. Asking the
+     * metadata pool costs one lookup and keeps this correct on both editions.
+     *
+     * @param int[] $productIds
+     * @return int[]
+     */
     private function resolveLinkValues(array $productIds, string $linkField): array
     {
         if ($linkField === 'entity_id') {

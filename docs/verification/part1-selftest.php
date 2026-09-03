@@ -33,12 +33,40 @@ function check(string $label, bool $ok, string $detail = ''): void
     printf("  [%s] %-58s %s\n", $ok ? 'PASS' : 'FAIL', $label, $detail);
 }
 
-function buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, float $qty, ?string $token = null)
+ensureStock($om, ['MJ08-L-Green', 'WJ12-XS-Blue']);
+
+/**
+ * Tiers are reached with a $10,000 product rather than a large quantity of a cheap one, so
+ * the run does not depend on how stock is configured. The store's 20% cart rule is why the
+ * grand totals below are not round multiples.
+ *
+ * @param array<string, float> $items sku => qty
+ */
+/**
+ * Self-tests place real orders, so they consume stock. Topping the two SKUs up keeps the run
+ * repeatable instead of passing once and then failing on "Not enough items for sale".
+ */
+function ensureStock($om, array $skus): void
+{
+    $stockRegistry = $om->get(\Magento\CatalogInventory\Api\StockRegistryInterface::class);
+
+    foreach ($skus as $sku) {
+        $item = $stockRegistry->getStockItemBySku($sku);
+        $item->setQty(1000);
+        $item->setIsInStock(true);
+        $stockRegistry->updateStockItemBySku($sku, $item);
+    }
+}
+
+function buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, array $items, ?string $token = null, string $method = 'stripe_payments')
 {
     $quote = $quoteFactory->create();
     $quote->setStoreId(1)->setIsActive(true)->setCustomerIsGuest(true)
           ->setCustomerEmail('selftest@example.test');
-    $quote->addProduct($productRepo->get('MJ08-L-Green'), $qty);
+
+    foreach ($items as $sku => $qty) {
+        $quote->addProduct($productRepo->get($sku), (float)$qty);
+    }
 
     $address = [
         'firstname' => 'Self', 'lastname' => 'Test', 'street' => ['1 Test St'],
@@ -49,9 +77,10 @@ function buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, float $qty, ?s
     $quote->getShippingAddress()->addData($address)->setCollectShippingRates(true)
           ->collectShippingRates()->setShippingMethod('flatrate_flatrate');
 
+    $quote->setCheckoutMethod('guest');
+    $quote->getPayment()->setMethod($method);
+
     if ($token !== null) {
-        $quote->setCheckoutMethod('guest');
-        $quote->getPayment()->setMethod('stripe_payments');
         $quote->getPayment()->setAdditionalInformation('token', $token);
     }
 
@@ -60,6 +89,11 @@ function buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, float $qty, ?s
 
     return $quote;
 }
+
+/** Quantities of the $10,000 product that land in each tier. */
+const TIER_ALL_CARDS = ['WJ12-XS-Blue' => 1];   // ~$8,005
+const TIER_AMEX_ONLY = ['WJ12-XS-Blue' => 2];   // ~$16,010
+const TIER_NO_CARDS  = ['WJ12-XS-Blue' => 3];   // ~$24,015
 
 echo "\nAC-9  boundaries are exact\n";
 foreach ([
@@ -74,8 +108,8 @@ foreach ([
 
 echo "\nAC-8  offline methods survive every tier, cards follow the tier\n";
 $tiers = [];
-foreach ([50 => 'all cards', 210 => 'amex only', 260 => 'no cards'] as $qty => $label) {
-    $quote = buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, (float)$qty);
+foreach (['all cards' => TIER_ALL_CARDS, 'amex only' => TIER_AMEX_ONLY, 'no cards' => TIER_NO_CARDS] as $label => $items) {
+    $quote = buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, $items);
     $codes = array_map(static fn ($m) => $m->getCode(), $methodList->getAvailableMethods($quote));
     $tiers[$label] = $codes;
     $total = '$' . number_format((float)$quote->getGrandTotal(), 2);
@@ -89,8 +123,8 @@ check('card method hidden only in the no-cards tier',
     && !in_array('stripe_payments', $tiers['no cards'], true));
 
 echo "\nAC-2  a restricted tier states why, an unrestricted one says nothing\n";
-foreach ([50 => false, 210 => true, 260 => true] as $qty => $expectMessage) {
-    $quote = buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, (float)$qty);
+foreach ([[TIER_ALL_CARDS, false], [TIER_AMEX_ONLY, true], [TIER_NO_CARDS, true]] as [$items, $expectMessage]) {
+    $quote = buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, $items);
     $tier = $totalsRepo->get($quote->getId())->getExtensionAttributes()->getGoodaheadPaymentTier();
     $message = $tier->getMessage();
     check(($expectMessage ? 'message present' : 'no message') . ' at $'
@@ -102,17 +136,17 @@ foreach ([50 => false, 210 => true, 260 => true] as $qty => $expectMessage) {
 echo "\nAC-1 / AC-4  enforcement against a client that never renders the checkout\n";
 $orders = static fn () => (int)$connection->fetchOne('SELECT COUNT(*) FROM sales_order');
 foreach ([
-    [50, 'pm_card_visa', true, 'all cards: visa accepted'],
-    [210, 'pm_card_visa', false, 'amex only: visa refused'],
-    [210, 'pm_card_amex', true, 'amex only: amex accepted'],
-    [260, 'pm_card_amex', false, 'no cards: amex refused'],
-] as [$qty, $token, $shouldPlace, $label]) {
+    [TIER_ALL_CARDS, 'pm_card_visa', true, 'all cards: visa accepted'],
+    [TIER_AMEX_ONLY, 'pm_card_visa', false, 'amex only: visa refused'],
+    [TIER_AMEX_ONLY, 'pm_card_amex', true, 'amex only: amex accepted'],
+    [TIER_NO_CARDS, 'pm_card_amex', false, 'no cards: amex refused'],
+] as [$items, $token, $shouldPlace, $label]) {
     $before = $orders();
     $placed = false;
     $detail = '';
 
     try {
-        $quote = buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, (float)$qty, $token);
+        $quote = buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, $items, $token);
         $orderId = $cartManagement->placeOrder($quote->getId());
         $placed = true;
         $detail = '#' . $om->get(\Magento\Sales\Api\OrderRepositoryInterface::class)->get($orderId)->getIncrementId();
@@ -138,6 +172,63 @@ check('tier and accepted brand stored on the order',
     ($info['goodahead_accepted_brand'] ?? null) === 'amex'
     && ($info['goodahead_tier_allowed_brands'] ?? null) === 'amex',
     'bound ' . ($info['goodahead_tier_upper_bound'] ?? '-'));
+
+echo "\nDoD  a large order still completes through an offline method\n";
+$before = $orders();
+$offlineTotal = 0.0;
+$offlineDetail = '';
+
+try {
+    // 3 x WJ12-XS-Blue plus 12 x MJ08-L-Green lands just over $25,000 after the store's
+    // 20% cart rule, which is the figure the Definition of Done names.
+    // Just over the $25,000 the Definition of Done names, after the store's 20% cart rule.
+    $quote = buildQuote($om, $productRepo, $quoteFactory, $quoteRepo,
+        ['WJ12-XS-Blue' => 3, 'MJ08-L-Green' => 12], null, 'checkmo');
+    $offlineTotal = (float)$quote->getGrandTotal();
+    $orderId = $cartManagement->placeOrder($quote->getId());
+    $offlineDetail = '#' . $om->get(\Magento\Sales\Api\OrderRepositoryInterface::class)->get($orderId)->getIncrementId();
+} catch (\Throwable $e) {
+    $offlineDetail = substr($e->getMessage(), 0, 44) . '…';
+}
+
+check('a $25,000+ order is placed with Check / Money Order',
+    $offlineTotal > 25000 && $orders() - $before === 1,
+    '$' . number_format($offlineTotal, 2) . ' ' . $offlineDetail);
+
+echo "\nAC-1  a payment intent created at a lower amount is not honoured on its old terms\n";
+$stripeClient = $om->get(\StripeIntegration\Payments\Model\Config::class)->getStripeClient();
+
+// An intent for an order that was small when it was created.
+$staleIntent = $stripeClient->paymentIntents->create([
+    'amount' => 900000,
+    'currency' => 'usd',
+    'automatic_payment_methods' => ['enabled' => 'true'],
+]);
+
+$before = $orders();
+$placed = false;
+$detail = '';
+
+try {
+    // The cart has since crossed into the Amex-only tier, and the client replays the old
+    // intent together with a card that tier does not allow.
+    $quote = buildQuote($om, $productRepo, $quoteFactory, $quoteRepo, TIER_AMEX_ONLY, 'pm_card_visa');
+    $quote->getPayment()->setAdditionalInformation('payment_intent_id', $staleIntent->id);
+    $quoteRepo->save($quote);
+    $cartManagement->placeOrder($quote->getId());
+    $placed = true;
+} catch (\Throwable $e) {
+    $detail = substr($e->getMessage(), 0, 44) . '…';
+}
+
+check('the replayed attempt is rejected', !$placed && $orders() === $before, $detail);
+
+$staleAfter = $stripeClient->paymentIntents->retrieve($staleIntent->id);
+check('the stale intent was never confirmed',
+    $staleAfter->status === 'requires_payment_method' && (int)$staleAfter->amount_received === 0,
+    $staleAfter->status . ', received ' . number_format($staleAfter->amount_received / 100, 2));
+check('and still holds its original amount, so it was not silently repriced',
+    (int)$staleAfter->amount === 900000, '$' . number_format($staleAfter->amount / 100, 2));
 
 echo "\nNo authorisation is taken when a payment is refused\n";
 $client = $om->get(\StripeIntegration\Payments\Model\Config::class)->getStripeClient();

@@ -4,7 +4,8 @@
  *
  *   cp docs/verification/finance-stub.php src/app/code/
  *   docker compose exec -d phpfpm php -S 0.0.0.0:8099 /var/www/html/app/code/finance-stub.php
- *   bin/magento config:set goodahead_ordersync/endpoint/url http://127.0.0.1:8099/orders
+ *
+ * The endpoint is pointed at the stub for the duration of the run and restored afterwards.
  *
  * Then:
  *
@@ -38,6 +39,8 @@ function check(string $label, bool $ok, string $detail = ''): void
     printf("  [%s] %-56s %s\n", $ok ? 'PASS' : 'FAIL', $label, $detail);
 }
 
+ensureStock($om, ['MJ08-L-Green']);
+
 $stub = static function (string $path): ?array {
     $raw = @file_get_contents('http://127.0.0.1:8099' . $path, false, stream_context_create([
         'http' => ['method' => 'POST', 'ignore_errors' => true, 'timeout' => 5],
@@ -50,6 +53,52 @@ $stubState = static fn (): array => json_decode((string)@file_get_contents('http
 if ($stub('/_reset') === null) {
     echo "\nThe finance stub is not answering on port 8099. See the header of this file.\n";
     exit(1);
+}
+
+/*
+ * Point the module at the stub for the duration of the run and put it back afterwards. The
+ * shipped default is example.invalid, which never resolves — correct as a default, useless
+ * for observing a delivery succeed.
+ */
+$configWriter->save(\Goodahead\OrderSync\Model\Config::XML_PATH_ENDPOINT_URL, 'http://127.0.0.1:8099/orders', 'default', 0);
+$appConfig->clean();
+
+/**
+ * Self-tests place real orders, so they consume stock. Topping the two SKUs up keeps the run
+ * repeatable instead of passing once and then failing on "Not enough items for sale".
+ */
+/**
+ * Puts every setting this run changes back, whatever happened.
+ *
+ * Restoring by deleting the override rather than by writing back what was read: a run that
+ * failed half way through used to leave its own temporary values behind, and the next run
+ * would then read those as the originals and faithfully preserve them.
+ */
+function restoreConfiguration($configWriter, $appConfig, string $paymentAction): void
+{
+    foreach ([
+        \Goodahead\OrderSync\Model\Config::XML_PATH_ENDPOINT_URL,
+        'goodahead_ordersync/retry/base_delay',
+        'goodahead_ordersync/retry/max_delay',
+        'goodahead_ordersync/retry/max_attempts',
+    ] as $path) {
+        $configWriter->delete($path, 'default', 0);
+    }
+
+    $configWriter->save('payment/stripe_payments/payment_action', $paymentAction, 'default', 0);
+    $appConfig->clean();
+}
+
+function ensureStock($om, array $skus): void
+{
+    $stockRegistry = $om->get(\Magento\CatalogInventory\Api\StockRegistryInterface::class);
+
+    foreach ($skus as $sku) {
+        $item = $stockRegistry->getStockItemBySku($sku);
+        $item->setQty(1000);
+        $item->setIsInStock(true);
+        $stockRegistry->updateStockItemBySku($sku, $item);
+    }
 }
 
 function placeOrder($om, string $method, ?string $token, float $qty = 5.0): \Magento\Sales\Api\Data\OrderInterface
@@ -91,8 +140,32 @@ $stub('/_mode?mode=ok');
  */
 $originalPaymentAction = (string)$om->get(\Magento\Framework\App\Config\ScopeConfigInterface::class)
     ->getValue('payment/stripe_payments/payment_action');
+
+// Registered once the original is known, so a run that dies half way still puts it back.
+register_shutdown_function(
+    static fn () => restoreConfiguration($configWriter, $appConfig, $originalPaymentAction)
+);
 $configWriter->save('payment/stripe_payments/payment_action', 'authorize', 'default', 0);
 $appConfig->clean();
+
+echo "\nAC-10  checkout does not wait for the finance system\n";
+
+// The stub sleeps for 30 seconds in this mode. A synchronous dispatch would make placement
+// wait for it; nothing here should.
+$stub('/_mode?mode=timeout');
+$startedAt = microtime(true);
+$slowOrder = placeOrder($om, 'stripe_payments', 'pm_card_visa');
+$elapsed = microtime(true) - $startedAt;
+$stub('/_mode?mode=ok');
+
+check('the order is created while the endpoint hangs', (int)$slowOrder->getEntityId() > 0, '#' . $slowOrder->getIncrementId());
+check('placement did not wait for it', $elapsed < 10.0, sprintf('%.2fs against the endpoint\'s 30s', $elapsed));
+check('the delivery is registered but not yet delivered',
+    ($connection->fetchOne('SELECT status FROM goodahead_ordersync_dispatch WHERE order_id = ?',
+        [(int)$slowOrder->getEntityId()]) ?: '') === 'pending');
+
+$connection->delete('goodahead_ordersync_dispatch');
+$stub('/_reset');
 
 echo "\nAC-13  a paid order registers a delivery, an unpaid one does not\n";
 $paid = placeOrder($om, 'stripe_payments', 'pm_card_visa');
@@ -178,11 +251,7 @@ check('and it then succeeds',
     $connection->fetchOne('SELECT status FROM goodahead_ordersync_dispatch WHERE order_id = ? AND event_type = ?',
         [(int)$paid->getEntityId(), EventType::ORDER_CANCELLED]) === 'succeeded');
 
-$configWriter->save('payment/stripe_payments/payment_action', $originalPaymentAction, 'default', 0);
-$configWriter->save('goodahead_ordersync/retry/base_delay', '60', 'default', 0);
-$configWriter->save('goodahead_ordersync/retry/max_delay', '3600', 'default', 0);
-$configWriter->save('goodahead_ordersync/retry/max_attempts', '6', 'default', 0);
-$appConfig->clean();
+restoreConfiguration($configWriter, $appConfig, $originalPaymentAction);
 
 printf("\n%s\n", $failures === 0 ? 'All Part 2 checks passed.' : $failures . ' check(s) FAILED.');
 exit($failures === 0 ? 0 : 1);

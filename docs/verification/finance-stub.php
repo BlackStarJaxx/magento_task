@@ -13,7 +13,11 @@
  * Run it inside the phpfpm container:
  *
  *   cp docs/verification/finance-stub.php src/app/code/
- *   docker compose exec -d phpfpm php -S 0.0.0.0:8099 /var/www/html/app/code/finance-stub.php
+ *   docker compose exec -d -e PHP_CLI_SERVER_WORKERS=4 phpfpm \
+ *       php -S 0.0.0.0:8099 /var/www/html/app/code/finance-stub.php
+ *
+ * PHP_CLI_SERVER_WORKERS matters: the built-in server is single threaded without it, so the
+ * timeout mode below would block every later request instead of only its own.
  *
  * Then point the module at http://127.0.0.1:8099/orders.
  *

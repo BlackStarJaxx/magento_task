@@ -6,7 +6,15 @@ namespace Goodahead\OrderSync\Test\Unit\Model\Payload;
 
 use Goodahead\OrderSync\Model\Dispatch\EventType;
 use Goodahead\OrderSync\Model\Dispatch\IdempotencyKey;
+use Goodahead\OrderSync\Api\Data\PayloadSectionInterface;
+use Goodahead\OrderSync\Model\Payload\Money;
 use Goodahead\OrderSync\Model\Payload\OrderPayloadBuilder;
+use Goodahead\OrderSync\Model\Payload\Section\Currency;
+use Goodahead\OrderSync\Model\Payload\Section\Customer;
+use Goodahead\OrderSync\Model\Payload\Section\Items;
+use Goodahead\OrderSync\Model\Payload\Section\OrderIdentity;
+use Goodahead\OrderSync\Model\Payload\Section\Payment;
+use Goodahead\OrderSync\Model\Payload\Section\Totals;
 use Magento\Framework\Stdlib\DateTime\DateTime;
 use Magento\Sales\Api\Data\OrderInterface;
 use Magento\Sales\Api\Data\OrderItemInterface;
@@ -22,7 +30,16 @@ class OrderPayloadBuilderTest extends TestCase
         $dateTime = $this->createStub(DateTime::class);
         $dateTime->method('gmtDate')->willReturn('2026-09-03T08:00:00+00:00');
 
-        $this->builder = new OrderPayloadBuilder(new IdempotencyKey(), $dateTime);
+        $money = new Money();
+
+        $this->builder = new OrderPayloadBuilder(new IdempotencyKey(), $dateTime, [
+            new OrderIdentity(),
+            new Currency($money),
+            new Totals($money),
+            new Customer(),
+            new Payment($money),
+            new Items($money),
+        ]);
     }
 
     public function testCarriesASchemaVersionSoTheContractCanChangeLater(): void
@@ -77,6 +94,41 @@ class OrderPayloadBuilderTest extends TestCase
 
         self::assertSame('order_cancelled', $payload['event']);
         self::assertSame('goodahead-000000042-order_cancelled', $payload['idempotency_key']);
+    }
+
+    /**
+     * The contract is extended by adding a section, not by editing the builder. A store that
+     * has to send its own field should not need to fork this module.
+     */
+    public function testASectionAddedByAnotherModuleReachesThePayload(): void
+    {
+        $dateTime = $this->createStub(DateTime::class);
+        $dateTime->method('gmtDate')->willReturn('2026-09-03T08:00:00+00:00');
+
+        $extra = new class implements PayloadSectionInterface {
+            public function build(OrderInterface $order): array
+            {
+                return ['warehouse' => 'east'];
+            }
+        };
+
+        $builder = new OrderPayloadBuilder(new IdempotencyKey(), $dateTime, [new OrderIdentity(), $extra]);
+        $payload = $builder->build($this->order(), EventType::ORDER_PLACED);
+
+        self::assertSame('east', $payload['order']['warehouse']);
+        self::assertSame('000000042', $payload['order']['increment_id'], 'existing sections still contribute');
+    }
+
+    public function testTheEnvelopeIsBuiltEvenWithNoSections(): void
+    {
+        $dateTime = $this->createStub(DateTime::class);
+        $dateTime->method('gmtDate')->willReturn('2026-09-03T08:00:00+00:00');
+
+        $payload = (new OrderPayloadBuilder(new IdempotencyKey(), $dateTime, []))
+            ->build($this->order(), EventType::ORDER_PLACED);
+
+        self::assertSame([], $payload['order']);
+        self::assertSame('goodahead-000000042-order_placed', $payload['idempotency_key']);
     }
 
     private function order(): OrderInterface

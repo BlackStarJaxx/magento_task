@@ -13,4 +13,17 @@
             </argument>
         </arguments>
     </type>
+
+    <type name="Goodahead\OrderSync\Model\Payload\OrderPayloadBuilder">
+        <arguments>
+            <argument name="sections" xsi:type="array">
+                <item name="identity" xsi:type="object">Goodahead\OrderSync\Model\Payload\Section\OrderIdentity</item>
+                <item name="currency" xsi:type="object">Goodahead\OrderSync\Model\Payload\Section\Currency</item>
+                <item name="totals" xsi:type="object">Goodahead\OrderSync\Model\Payload\Section\Totals</item>
+                <item name="customer" xsi:type="object">Goodahead\OrderSync\Model\Payload\Section\Customer</item>
+                <item name="payment" xsi:type="object">Goodahead\OrderSync\Model\Payload\Section\Payment</item>
+                <item name="items" xsi:type="object">Goodahead\OrderSync\Model\Payload\Section\Items</item>
+            </argument>
+        </arguments>
+    </type>
 </config>

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Goodahead\PaymentTiers\Model;
 
+use Goodahead\PaymentTiers\Model\Order\TierDecisionRecorder;
 use Goodahead\PaymentTiers\Model\Stripe\BrandReader;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Sales\Api\Data\OrderInterface;
@@ -29,6 +30,7 @@ class TierGuard
         private readonly RestrictedMethods $restrictedMethods,
         private readonly ComparableAmount $comparableAmount,
         private readonly BrandReader $brandReader,
+        private readonly TierDecisionRecorder $recorder,
         private readonly StoreManagerInterface $storeManager
     ) {
     }
@@ -82,6 +84,8 @@ class TierGuard
         if (!$tier->allowsBrand($details->getBrand())) {
             throw new LocalizedException($this->messageFor($tier));
         }
+
+        $this->recorder->record($order, $tier, $details);
     }
 
     private function messageFor(Tier $tier): \Magento\Framework\Phrase

@@ -14,7 +14,8 @@ class PaymentMethodDetails
     public function __construct(
         private readonly ?string $type,
         private readonly ?string $brand,
-        private readonly ?string $wallet
+        private readonly ?string $wallet,
+        private readonly ?string $last4 = null
     ) {
     }
 
@@ -36,5 +37,10 @@ class PaymentMethodDetails
     public function getWallet(): ?string
     {
         return $this->wallet;
+    }
+
+    public function getLast4(): ?string
+    {
+        return $this->last4;
     }
 }

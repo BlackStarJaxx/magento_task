@@ -124,6 +124,21 @@ foreach ([
     check($label, $placed === $shouldPlace && $rowsChanged === ($shouldPlace ? 1 : 0), $detail);
 }
 
+echo "\nThe decision is recorded on the order, not left to the Stripe API\n";
+$recorded = $connection->fetchRow(
+    'SELECT p.cc_type, p.cc_last_4, p.additional_information'
+    . ' FROM sales_order o JOIN sales_order_payment p ON p.parent_id = o.entity_id'
+    . ' ORDER BY o.entity_id DESC LIMIT 1'
+);
+$info = json_decode((string)($recorded['additional_information'] ?? '{}'), true) ?: [];
+check('card brand and last four stored on the order',
+    ($recorded['cc_type'] ?? null) === 'AE' && !empty($recorded['cc_last_4']),
+    ($recorded['cc_type'] ?? '-') . ' ••••' . ($recorded['cc_last_4'] ?? '-'));
+check('tier and accepted brand stored on the order',
+    ($info['goodahead_accepted_brand'] ?? null) === 'amex'
+    && ($info['goodahead_tier_allowed_brands'] ?? null) === 'amex',
+    'bound ' . ($info['goodahead_tier_upper_bound'] ?? '-'));
+
 echo "\nNo authorisation is taken when a payment is refused\n";
 $client = $om->get(\StripeIntegration\Payments\Model\Config::class)->getStripeClient();
 $unconfirmed = 0;

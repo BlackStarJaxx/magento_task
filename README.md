@@ -98,6 +98,15 @@ Full reasoning in [`docs/adr/`](docs/adr); evidence in [`docs/verification/`](do
 - **Fail closed on money, fail open on presentation.** An unknown order value, an unreadable
   brand or unreadable tier configuration all refuse the payment. The observer, by contrast,
   catches and logs — it must never be why a checkout page fails to render.
+- **The decision is recorded on the order.** The Stripe module stores neither the brand nor
+  the last four digits — the admin fetches them from the API on every page view, so they
+  vanish if the keys are rotated or the account is unreachable, and nothing records which
+  tier applied. `TierGuard` writes `cc_type` / `cc_last_4` and the tier, the brands it
+  allowed and the brand it accepted, at the moment it decides. This matters because the tier
+  table is configuration: a year later, with different thresholds, nothing else would explain
+  why a $16,010 order was allowed on Amex. Only masked digits and a brand are stored — the
+  full number never reaches this server — mirroring what Magento's own Braintree module
+  writes in `Gateway\Response\CardDetailsHandler`.
 - **Non-card methods are left alone.** Stripe's Payment Element also offers SEPA, iDEAL and
   others under the same Magento method code. The tiers exist to cap *card* chargeback
   exposure, so restricting those would impose the cost of the policy without its benefit.
@@ -116,8 +125,6 @@ Full reasoning in [`docs/adr/`](docs/adr); evidence in [`docs/verification/`](do
   acceptance criterion not fully met, and it is the first thing to finish.
 - **`capture_method: manual` in restricted tiers.** Only needed once the backstop exists, so
   that an unwind is an authorisation released rather than a refund issued.
-- **Tier metadata on the intent** (`getParamsFrom` plugin) — useful for auditing a dispute,
-  not needed for enforcement.
 - **A brand multiselect in the admin.** The tier table uses validated text columns; the brief
   puts admin UI beyond a `system.xml` section out of scope.
 - **Non-USD verification.** The conversion path is implemented and unit-tested but has not

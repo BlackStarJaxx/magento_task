@@ -48,6 +48,25 @@ class CardBrand
         return in_array($this->normalise($brand), self::KNOWN, true);
     }
 
+    /**
+     * Magento's own card-type codes, as used by sales_order_payment.cc_type. Anything Magento
+     * has no code for is recorded as "Other" rather than invented.
+     */
+    private const MAGENTO_CODES = [
+        'visa' => 'VI',
+        'mastercard' => 'MC',
+        self::AMEX => 'AE',
+        'discover' => 'DI',
+        'diners' => 'DN',
+        'jcb' => 'JCB',
+        'unionpay' => 'UN',
+    ];
+
+    public function toMagentoCode(string $brand): string
+    {
+        return self::MAGENTO_CODES[$this->normalise($brand)] ?? 'OT';
+    }
+
     /** @return string[] */
     public function all(): array
     {

@@ -10,6 +10,12 @@
                 sortOrder="10"/>
     </type>
 
+    <type name="StripeIntegration\Payments\Model\ExpressCheckout\Config">
+        <plugin name="goodahead_payment_tiers_hide_express"
+                type="Goodahead\PaymentTiers\Plugin\Checkout\HideExpressCheckoutWithoutCards"
+                sortOrder="10"/>
+    </type>
+
     <type name="Magento\Quote\Api\CartTotalRepositoryInterface">
         <plugin name="goodahead_payment_tiers_totals"
                 type="Goodahead\PaymentTiers\Plugin\Checkout\AddTierToTotals"

@@ -25,8 +25,6 @@ class TierGuardTest extends TestCase
     private const AMEX_ONLY = 1500000;
     private const NO_CARDS = 2500000;
 
-    private const ALL_CARDS = ['visa', 'mastercard', 'amex'];
-
     public function testAllowsAnAllowedBrand(): void
     {
         $this->expectNotToPerformAssertions();

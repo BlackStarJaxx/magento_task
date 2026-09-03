@@ -8,8 +8,8 @@ use Magento\Framework\Data\OptionSourceInterface;
 
 class CurrencyMode implements OptionSourceInterface
 {
-    public const CONVERT_TO_USD = 'convert_to_usd';
-    public const BASE_CURRENCY = 'base_currency';
+    public const string CONVERT_TO_USD = 'convert_to_usd';
+    public const string BASE_CURRENCY = 'base_currency';
 
     /**
      * @return array<int, array{value: string, label: \Magento\Framework\Phrase}>

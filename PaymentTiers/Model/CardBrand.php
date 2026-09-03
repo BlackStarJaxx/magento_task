@@ -13,9 +13,9 @@ namespace Goodahead\PaymentTiers\Model;
  */
 class CardBrand
 {
-    public const AMEX = 'amex';
+    public const string AMEX = 'amex';
 
-    private const KNOWN = [
+    private const array KNOWN = [
         'visa',
         'mastercard',
         self::AMEX,
@@ -26,7 +26,7 @@ class CardBrand
         'cartes_bancaires',
     ];
 
-    private const ALIASES = [
+    private const array ALIASES = [
         'american_express' => self::AMEX,
         'americanexpress' => self::AMEX,
         'master_card' => 'mastercard',

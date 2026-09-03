@@ -11,14 +11,15 @@ use Goodahead\OrderSync\Model\Dispatch\EventType;
 use Goodahead\OrderSync\Model\Order\PaidStateDetector;
 use Goodahead\OrderSync\Model\ResourceModel\Dispatch as DispatchResource;
 use Magento\Framework\Stdlib\DateTime\DateTime;
+use Magento\Sales\Api\OrderRepositoryInterface;
 use Psr\Log\LoggerInterface;
 
 class DispatchSweeper
 {
     /** A claim older than this belonged to a worker that is not coming back. */
-    private const STALE_CLAIM_SECONDS = 900;
+    private const int STALE_CLAIM_SECONDS = 900;
 
-    private const BATCH_SIZE = 50;
+    private const int BATCH_SIZE = 50;
 
     public function __construct(
         private readonly DispatchResource $dispatchResource,
@@ -26,7 +27,7 @@ class DispatchSweeper
         private readonly Config $config,
         private readonly DispatchRegistrar $registrar,
         private readonly PaidStateDetector $paidStateDetector,
-        private readonly \Magento\Sales\Api\OrderRepositoryInterface $orderRepository,
+        private readonly OrderRepositoryInterface $orderRepository,
         private readonly DateTime $dateTime,
         private readonly LoggerInterface $logger
     ) {

@@ -13,7 +13,7 @@ use Magento\Framework\Setup\Patch\DataPatchInterface;
 
 class AddLastPurchasedAtAttribute implements DataPatchInterface
 {
-    public const ATTRIBUTE_CODE = 'last_purchased_at';
+    public const string ATTRIBUTE_CODE = 'last_purchased_at';
 
     public function __construct(
         private readonly ModuleDataSetupInterface $moduleDataSetup,

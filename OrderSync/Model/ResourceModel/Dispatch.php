@@ -14,7 +14,7 @@ use Magento\Sales\Api\Data\OrderInterface;
 
 class Dispatch
 {
-    public const TABLE = 'goodahead_ordersync_dispatch';
+    public const string TABLE = 'goodahead_ordersync_dispatch';
 
     public function __construct(
         private readonly ResourceConnection $resourceConnection,

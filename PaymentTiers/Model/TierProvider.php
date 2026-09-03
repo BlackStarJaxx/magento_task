@@ -17,9 +17,9 @@ use Psr\Log\LoggerInterface;
  */
 class TierProvider
 {
-    public const XML_PATH_ENABLED = 'goodahead_payment_tiers/general/enabled';
-    public const XML_PATH_CURRENCY_MODE = 'goodahead_payment_tiers/general/currency_mode';
-    public const XML_PATH_ROWS = 'goodahead_payment_tiers/tiers/rows';
+    public const string XML_PATH_ENABLED = 'goodahead_payment_tiers/general/enabled';
+    public const string XML_PATH_CURRENCY_MODE = 'goodahead_payment_tiers/general/currency_mode';
+    public const string XML_PATH_ROWS = 'goodahead_payment_tiers/tiers/rows';
 
     public function __construct(
         private readonly ScopeConfigInterface $scopeConfig,

@@ -14,7 +14,7 @@ namespace Goodahead\PaymentTiers\Model;
  */
 class OfflineMethods
 {
-    private const ALWAYS_AVAILABLE = [
+    private const array ALWAYS_AVAILABLE = [
         'checkmo',
         'banktransfer',
     ];

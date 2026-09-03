@@ -21,7 +21,7 @@ use Magento\Store\Model\ScopeInterface;
  */
 class RestrictedMethods
 {
-    public const XML_PATH_RESTRICTED = 'goodahead_payment_tiers/methods/restricted';
+    public const string XML_PATH_RESTRICTED = 'goodahead_payment_tiers/methods/restricted';
 
     public function __construct(
         private readonly ScopeConfigInterface $scopeConfig,

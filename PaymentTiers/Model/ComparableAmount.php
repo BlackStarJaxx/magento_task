@@ -30,7 +30,7 @@ use Psr\Log\LoggerInterface;
  */
 class ComparableAmount
 {
-    private const USD = 'USD';
+    private const string USD = 'USD';
 
     public function __construct(
         private readonly TierProvider $tierProvider,

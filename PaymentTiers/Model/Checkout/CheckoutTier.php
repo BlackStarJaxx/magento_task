@@ -13,10 +13,10 @@ use Magento\Framework\Api\AbstractSimpleObject;
  */
 class CheckoutTier extends AbstractSimpleObject implements CheckoutTierInterface
 {
-    public const MESSAGE = 'message';
-    public const CARD_AVAILABLE = 'card_available';
-    public const ALLOWED_BRANDS = 'allowed_brands';
-    public const BRAND_RESTRICTED = 'brand_restricted';
+    public const string MESSAGE = 'message';
+    public const string CARD_AVAILABLE = 'card_available';
+    public const string ALLOWED_BRANDS = 'allowed_brands';
+    public const string BRAND_RESTRICTED = 'brand_restricted';
 
     public function getMessage(): string
     {

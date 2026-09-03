@@ -11,7 +11,7 @@ use Magento\Sales\Api\Data\OrderInterface;
 
 class OrderPayloadBuilder
 {
-    public const SCHEMA_VERSION = 1;
+    public const int SCHEMA_VERSION = 1;
 
     /**
      * @param PayloadSectionInterface[] $sections

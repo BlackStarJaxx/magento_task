@@ -27,11 +27,11 @@ use Magento\Sales\Api\Data\OrderInterface;
  */
 class TierDecisionRecorder
 {
-    public const TIER_UPPER_BOUND = 'goodahead_tier_upper_bound';
-    public const TIER_ALLOWED_BRANDS = 'goodahead_tier_allowed_brands';
-    public const ACCEPTED_BRAND = 'goodahead_accepted_brand';
-    public const PAYMENT_METHOD_TYPE = 'goodahead_payment_method_type';
-    public const WALLET = 'goodahead_wallet';
+    public const string TIER_UPPER_BOUND = 'goodahead_tier_upper_bound';
+    public const string TIER_ALLOWED_BRANDS = 'goodahead_tier_allowed_brands';
+    public const string ACCEPTED_BRAND = 'goodahead_accepted_brand';
+    public const string PAYMENT_METHOD_TYPE = 'goodahead_payment_method_type';
+    public const string WALLET = 'goodahead_wallet';
 
     public function __construct(
         private readonly CardBrand $cardBrand,

@@ -9,13 +9,13 @@ use Magento\Store\Model\ScopeInterface;
 
 class Config
 {
-    public const XML_PATH_ENABLED = 'goodahead_ordersync/general/enabled';
-    public const XML_PATH_ENDPOINT_URL = 'goodahead_ordersync/endpoint/url';
-    public const XML_PATH_TIMEOUT = 'goodahead_ordersync/endpoint/timeout';
-    public const XML_PATH_MAX_ATTEMPTS = 'goodahead_ordersync/retry/max_attempts';
-    public const XML_PATH_BASE_DELAY = 'goodahead_ordersync/retry/base_delay';
-    public const XML_PATH_MAX_DELAY = 'goodahead_ordersync/retry/max_delay';
-    public const XML_PATH_RECONCILE_DAYS = 'goodahead_ordersync/retry/reconcile_window_days';
+    public const string XML_PATH_ENABLED = 'goodahead_ordersync/general/enabled';
+    public const string XML_PATH_ENDPOINT_URL = 'goodahead_ordersync/endpoint/url';
+    public const string XML_PATH_TIMEOUT = 'goodahead_ordersync/endpoint/timeout';
+    public const string XML_PATH_MAX_ATTEMPTS = 'goodahead_ordersync/retry/max_attempts';
+    public const string XML_PATH_BASE_DELAY = 'goodahead_ordersync/retry/base_delay';
+    public const string XML_PATH_MAX_DELAY = 'goodahead_ordersync/retry/max_delay';
+    public const string XML_PATH_RECONCILE_DAYS = 'goodahead_ordersync/retry/reconcile_window_days';
 
     public function __construct(private readonly ScopeConfigInterface $scopeConfig)
     {

@@ -16,9 +16,9 @@ namespace Goodahead\PaymentTiers\Model;
 class MinorUnits
 {
     /** USD. The thresholds are stated in USD and amounts are converted before they reach here. */
-    private const EXPONENT = 2;
+    private const int EXPONENT = 2;
 
-    private const PRINT_PRECISION = 8;
+    private const int PRINT_PRECISION = 8;
 
     public function fromAmount(float|int|string $amount): int
     {

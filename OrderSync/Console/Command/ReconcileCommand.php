@@ -21,7 +21,7 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class ReconcileCommand extends Command
 {
-    private const OPTION_DAYS = 'days';
+    private const string OPTION_DAYS = 'days';
 
     public function __construct(
         private readonly DispatchSweeper $sweeper,

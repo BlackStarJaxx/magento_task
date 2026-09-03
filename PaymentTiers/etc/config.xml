@@ -9,15 +9,6 @@
                 <currency_mode>convert_to_usd</currency_mode>
             </general>
             <tiers>
-                <!--
-                    Rows are ordered by upper_bound; exactly one row must have an empty
-                    upper_bound and it is the unbounded top tier. Bounds are INCLUSIVE:
-                    a total of exactly 10000.00 belongs to the first row.
-                    brands: comma-separated Stripe card.brand codes; empty means no cards.
-                    methods: comma-separated payment method codes this tier permits, out of the
-                    governed set below. Blank means the tier does not narrow methods and only
-                    the brand rule applies, which is what the defaults do.
-                -->
                 <rows><![CDATA[[
                     {"upper_bound":"10000.00","brands":"visa,mastercard,amex,discover,diners,jcb,unionpay,cartes_bancaires","methods":"","message":""},
                     {"upper_bound":"20000.00","brands":"amex","methods":"","message":"For orders over $10,000 we can only accept American Express. Other cards will be declined."},
@@ -25,13 +16,6 @@
                 ]]]></rows>
             </tiers>
             <methods>
-                <!--
-                    Method codes a tier may hide. Stripe registers six; the four listed take a
-                    card at checkout and therefore carry the chargeback exposure this module
-                    exists to cap. stripe_payments_invoice and stripe_payments_bank_transfers
-                    are deliberately absent - they are not card payments. Check / Money Order
-                    and Bank Transfer can never be added here; the code filters them out.
-                -->
                 <restricted>stripe_payments,stripe_payments_express,stripe_payments_checkout,stripe_payments_subscriptions</restricted>
             </methods>
         </goodahead_payment_tiers>

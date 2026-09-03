@@ -10,7 +10,7 @@ use Psr\Log\LoggerInterface;
 
 class DispatchPublisher
 {
-    public const TOPIC = 'goodahead.ordersync.dispatch';
+    public const string TOPIC = 'goodahead.ordersync.dispatch';
 
     public function __construct(
         private readonly PublisherInterface $publisher,

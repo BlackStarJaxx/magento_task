@@ -6,6 +6,7 @@ namespace Goodahead\PaymentTiers\Model\Stripe;
 
 use Goodahead\PaymentTiers\Model\CardBrand;
 use Magento\Sales\Api\Data\OrderInterface;
+use Magento\Sales\Api\Data\OrderPaymentInterface;
 use StripeIntegration\Payments\Model\Stripe\ConfirmationTokenFactory;
 use StripeIntegration\Payments\Model\Stripe\PaymentMethodFactory;
 
@@ -37,7 +38,7 @@ class BrandReader
             return null;
         }
 
-        $confirmationTokenId = (string)$payment->getAdditionalInformation('confirmation_token');
+        $confirmationTokenId = $this->additionalInformation($payment, 'confirmation_token');
 
         if ($confirmationTokenId !== '') {
             $preview = $this->confirmationTokenFactory->create()
@@ -47,7 +48,7 @@ class BrandReader
             return $this->toDetails($preview);
         }
 
-        $paymentMethodId = (string)$payment->getAdditionalInformation('token');
+        $paymentMethodId = $this->additionalInformation($payment, 'token');
 
         if ($paymentMethodId === '') {
             return null;
@@ -56,6 +57,18 @@ class BrandReader
         return $this->toDetails(
             $this->paymentMethodFactory->create()->fromPaymentMethodId($paymentMethodId)->getStripeObject()
         );
+    }
+
+    /**
+     * OrderPaymentInterface declares getAdditionalInformation() without arguments, returning
+     * the whole array; only the concrete payment model accepts a key. Reading the array keeps
+     * this to the published interface.
+     */
+    private function additionalInformation(OrderPaymentInterface $payment, string $key): string
+    {
+        $value = $payment->getAdditionalInformation()[$key] ?? null;
+
+        return is_scalar($value) ? trim((string)$value) : '';
     }
 
     private function toDetails(mixed $stripeObject): ?PaymentMethodDetails

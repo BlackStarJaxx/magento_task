@@ -1,0 +1,11 @@
+# Static analysis for this module.
+#
+# Magento's own configuration is included so that its bootstrap, its DataObject reflection
+# extension and its ignore list apply; it does not set a level, so one is set here.
+includes:
+    - ../../../../dev/tests/static/testsuite/Magento/Test/Php/_files/phpstan/phpstan.neon
+
+parameters:
+    level: 8
+    paths:
+        - .

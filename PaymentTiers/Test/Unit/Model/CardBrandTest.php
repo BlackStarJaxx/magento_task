@@ -23,6 +23,9 @@ class CardBrandTest extends TestCase
         self::assertSame($expected, $this->cardBrand->normalise($input));
     }
 
+    /**
+     * @return array<string, array{string, string}>
+     */
     public static function spellingProvider(): array
     {
         return [

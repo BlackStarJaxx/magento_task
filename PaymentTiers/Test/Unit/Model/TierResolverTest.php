@@ -42,6 +42,9 @@ class TierResolverTest extends TestCase
         self::assertSame($expectedBrands, $this->resolver->resolve($amountMinorUnits)->getAllowedBrands());
     }
 
+    /**
+     * @return array<string, array{int, string[]}>
+     */
     public static function boundaryProvider(): array
     {
         return [

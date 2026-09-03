@@ -26,6 +26,7 @@ class Tiers extends AbstractFieldArray
             'class' => 'validate-zero-or-greater',
         ]);
         $this->addColumn('brands', ['label' => __('Allowed card brands')]);
+        $this->addColumn('methods', ['label' => __('Allowed methods (blank = all)')]);
         $this->addColumn('message', ['label' => __('Customer message')]);
 
         $this->_addAfter = false;

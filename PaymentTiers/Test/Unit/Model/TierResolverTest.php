@@ -70,6 +70,23 @@ class TierResolverTest extends TestCase
         self::assertFalse($tier->allowsAnyCard());
     }
 
+    /**
+     * AC-7 asks for the allowed methods per tier to be editable, so a tier can narrow the
+     * governed methods further. An empty list means the tier says nothing about methods,
+     * which is what keeps the default table readable.
+     */
+    public function testATierCanNarrowTheMethodsItPermits(): void
+    {
+        $unrestricted = new Tier(1000000, self::ALL_BRANDS, '');
+        $narrowed = new Tier(2000000, [CardBrand::AMEX], 'Amex only.', ['stripe_payments']);
+
+        self::assertTrue($unrestricted->allowsMethod('stripe_payments'));
+        self::assertTrue($unrestricted->allowsMethod('stripe_payments_checkout'), 'an empty list forbids nothing');
+
+        self::assertTrue($narrowed->allowsMethod('stripe_payments'));
+        self::assertFalse($narrowed->allowsMethod('stripe_payments_checkout'));
+    }
+
     public function testARestrictedTierCarriesAMessageForTheCustomer(): void
     {
         self::assertNotSame('', $this->resolver->resolve(1500000)->getMessage());

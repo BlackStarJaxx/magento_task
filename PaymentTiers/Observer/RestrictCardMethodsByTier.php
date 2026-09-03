@@ -78,7 +78,11 @@ class RestrictCardMethodsByTier implements ObserverInterface
                 return;
             }
 
-            if (!$this->tierResolver->resolve($amount, $websiteId)->allowsAnyCard()) {
+            $tier = $this->tierResolver->resolve($amount, $websiteId);
+
+            // Two separate reasons to hide: the tier allows no card at all, or it permits
+            // some governed methods and not this one.
+            if (!$tier->allowsAnyCard() || !$tier->allowsMethod((string)$method->getCode())) {
                 $result->setData('is_available', false);
             }
         } catch (\Throwable $e) {

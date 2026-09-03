@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Goodahead\PaymentTiers\Model\Config\Backend;
 
 use Goodahead\PaymentTiers\Model\CardBrand;
+use Goodahead\PaymentTiers\Model\KnownPaymentMethods;
+use Goodahead\PaymentTiers\Model\OfflineMethods;
 use Magento\Framework\App\Cache\TypeListInterface;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\App\Config\Value;
@@ -34,6 +36,8 @@ class Tiers extends Value
         TypeListInterface $cacheTypeList,
         private readonly Json $serializer,
         private readonly CardBrand $cardBrand,
+        private readonly KnownPaymentMethods $paymentMethods,
+        private readonly OfflineMethods $offlineMethods,
         ?AbstractResource $resource = null,
         ?AbstractDb $resourceCollection = null,
         array $data = []
@@ -63,6 +67,7 @@ class Tiers extends Value
                 $rows[] = [
                     'upper_bound' => trim((string)($row['upper_bound'] ?? '')),
                     'brands' => trim((string)($row['brands'] ?? '')),
+                    'methods' => trim((string)($row['methods'] ?? '')),
                     'message' => trim((string)($row['message'] ?? '')),
                 ];
             }
@@ -126,6 +131,20 @@ class Tiers extends Value
                 if (!$this->cardBrand->isKnown($brand)) {
                     throw new LocalizedException(
                         __('Tier %1: "%2" is not a known card brand. Allowed: %3.', $position, $brand, implode(', ', $this->cardBrand->all()))
+                    );
+                }
+            }
+
+            foreach (array_filter(array_map('trim', explode(',', $row['methods'] ?? ''))) as $methodCode) {
+                if (!$this->paymentMethods->isKnown($methodCode)) {
+                    throw new LocalizedException(
+                        __('Tier %1: "%2" is not a payment method this store has.', $position, $methodCode)
+                    );
+                }
+
+                if ($this->offlineMethods->isAlwaysAvailable($methodCode)) {
+                    throw new LocalizedException(
+                        __('Tier %1: %2 is always available and does not belong in this column.', $position, $methodCode)
                     );
                 }
             }

@@ -43,6 +43,18 @@ class RestrictCardMethodsByTierTest extends TestCase
         self::assertTrue($result->getData('is_available'));
     }
 
+    /**
+     * A tier that permits some governed methods and not others (AC-7) hides the rest, even
+     * when cards as such are allowed.
+     */
+    public function testHidesAGovernedMethodTheTierDoesNotPermit(): void
+    {
+        $tier = new Tier(2000000, [CardBrand::AMEX], 'Amex only.', ['stripe_payments']);
+
+        self::assertTrue($this->dispatch('stripe_payments', self::AMEX_ONLY, $tier)->getData('is_available'));
+        self::assertFalse($this->dispatch('stripe_payments_checkout', self::AMEX_ONLY, $tier)->getData('is_available'));
+    }
+
     public function testNeverTouchesAnOfflineMethod(): void
     {
         $result = $this->dispatch('checkmo', self::NO_CARDS, new Tier(null, [], 'No cards.'), restrictable: false);

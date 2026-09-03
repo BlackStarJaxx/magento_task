@@ -14,11 +14,14 @@
                     upper_bound and it is the unbounded top tier. Bounds are INCLUSIVE:
                     a total of exactly 10000.00 belongs to the first row.
                     brands: comma-separated Stripe card.brand codes; empty means no cards.
+                    methods: comma-separated payment method codes this tier permits, out of the
+                    governed set below. Blank means the tier does not narrow methods and only
+                    the brand rule applies, which is what the defaults do.
                 -->
                 <rows><![CDATA[[
-                    {"upper_bound":"10000.00","brands":"visa,mastercard,amex,discover,diners,jcb,unionpay,cartes_bancaires","message":""},
-                    {"upper_bound":"20000.00","brands":"amex","message":"For orders over $10,000 we can only accept American Express. Other cards will be declined."},
-                    {"upper_bound":"","brands":"","message":"Orders over $20,000 cannot be paid by card. Please use Check / Money Order or Bank Transfer."}
+                    {"upper_bound":"10000.00","brands":"visa,mastercard,amex,discover,diners,jcb,unionpay,cartes_bancaires","methods":"","message":""},
+                    {"upper_bound":"20000.00","brands":"amex","methods":"","message":"For orders over $10,000 we can only accept American Express. Other cards will be declined."},
+                    {"upper_bound":"","brands":"","methods":"","message":"Orders over $20,000 cannot be paid by card. Please use Check / Money Order or Bank Transfer."}
                 ]]]></rows>
             </tiers>
             <methods>

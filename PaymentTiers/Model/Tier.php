@@ -15,11 +15,14 @@ class Tier
     /**
      * @param int|null $upperBoundMinorUnits null means unbounded; there is exactly one such tier
      * @param string[] $allowedBrands normalised brand codes; empty means no cards at all
+     * @param string[] $allowedMethods governed method codes this tier permits; empty means the
+     *                                 tier does not narrow methods and only the brands apply
      */
     public function __construct(
         private readonly ?int $upperBoundMinorUnits,
         private readonly array $allowedBrands,
-        private readonly string $message
+        private readonly string $message,
+        private readonly array $allowedMethods = []
     ) {
     }
 
@@ -52,6 +55,21 @@ class Tier
     public function getAllowedBrands(): array
     {
         return $this->allowedBrands;
+    }
+
+    /**
+     * An empty list means the tier says nothing about methods, not that it forbids them all.
+     * Narrowing is opt-in, so a tier table that only cares about brands stays readable.
+     */
+    public function allowsMethod(string $methodCode): bool
+    {
+        return $this->allowedMethods === [] || in_array($methodCode, $this->allowedMethods, true);
+    }
+
+    /** @return string[] */
+    public function getAllowedMethods(): array
+    {
+        return $this->allowedMethods;
     }
 
     public function getMessage(): string

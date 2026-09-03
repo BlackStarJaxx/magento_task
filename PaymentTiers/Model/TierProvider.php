@@ -90,7 +90,8 @@ class TierProvider
             $tiers[] = new Tier(
                 $bound === '' ? null : $this->minorUnits->fromAmount($bound),
                 $this->parseBrands((string)($row['brands'] ?? '')),
-                trim((string)($row['message'] ?? ''))
+                trim((string)($row['message'] ?? '')),
+                $this->parseList((string)($row['methods'] ?? ''))
             );
         }
 
@@ -103,6 +104,12 @@ class TierProvider
         });
 
         return $tiers;
+    }
+
+    /** @return string[] */
+    private function parseList(string $csv): array
+    {
+        return array_values(array_unique(array_filter(array_map('trim', explode(',', $csv)))));
     }
 
     /** @return string[] */

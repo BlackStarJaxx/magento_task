@@ -62,7 +62,7 @@ class TierGuard
 
         $tier = $this->tierResolver->resolve($amount, $websiteId);
 
-        if (!$tier->allowsAnyCard()) {
+        if (!$tier->allowsAnyCard() || !$tier->allowsMethod((string)$payment->getMethod())) {
             throw new LocalizedException($this->messageFor($tier));
         }
 

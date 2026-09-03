@@ -1,9 +1,18 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
         xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <preference for="Goodahead\PaymentTiers\Api\Data\CheckoutTierInterface"
+                type="Goodahead\PaymentTiers\Model\Checkout\CheckoutTier"/>
+
     <type name="StripeIntegration\Payments\Helper\PaymentIntent">
         <plugin name="goodahead_payment_tiers_guard_confirmation"
                 type="Goodahead\PaymentTiers\Plugin\GuardPaymentIntentConfirmation"
+                sortOrder="10"/>
+    </type>
+
+    <type name="Magento\Quote\Api\CartTotalRepositoryInterface">
+        <plugin name="goodahead_payment_tiers_totals"
+                type="Goodahead\PaymentTiers\Plugin\Checkout\AddTierToTotals"
                 sortOrder="10"/>
     </type>
 </config>

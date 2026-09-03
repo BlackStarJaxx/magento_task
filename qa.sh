@@ -50,13 +50,16 @@ if grep -rn "ObjectManager" "src/${MODULE_ROOT}" --include='*.php' | grep -v '/T
     dod_ok=0
 fi
 
-if grep -rn "<preference" "src/${MODULE_ROOT}" --include='*.xml' ; then
-    printf '%sFAIL%s  preference used instead of a plugin\n' "$red" "$off"
+# The Definition of Done bans a preference "overriding a core or Stripe class where a plugin
+# or documented extension point exists". Binding our own Api\Data interface to its own
+# implementation is the ordinary way to declare a data type and is not what that forbids.
+if grep -rn "<preference" "src/${MODULE_ROOT}" --include='*.xml' | grep -v 'for="Goodahead' ; then
+    printf '%sFAIL%s  preference overriding a class outside this module\n' "$red" "$off"
     dod_ok=0
 fi
 
 if [ "$dod_ok" -eq 1 ]; then
-    printf '%sPASS%s  no ObjectManager, no preference\n' "$green" "$off"
+    printf '%sPASS%s  no ObjectManager, no foreign preference\n' "$green" "$off"
 else
     failed+=("Definition of Done invariants")
 fi

@@ -19,21 +19,25 @@ class Tiers extends AbstractFieldArray
 {
     protected function _prepareToRender(): void
     {
+        // Widths are set in CSS rather than inline: the table has to fit the configuration
+        // form's value column, which is narrower than the three columns need.
         $this->addColumn('upper_bound', [
             'label' => __('Upper bound (USD, inclusive)'),
             'class' => 'validate-zero-or-greater',
-            'style' => 'width:120px',
         ]);
-        $this->addColumn('brands', [
-            'label' => __('Allowed card brands'),
-            'style' => 'width:320px',
-        ]);
-        $this->addColumn('message', [
-            'label' => __('Customer message'),
-            'style' => 'width:420px',
-        ]);
+        $this->addColumn('brands', ['label' => __('Allowed card brands')]);
+        $this->addColumn('message', ['label' => __('Customer message')]);
 
         $this->_addAfter = false;
         $this->_addButtonLabel = __('Add tier');
+    }
+
+    /**
+     * Wraps the table in a class of our own so the stylesheet does not have to guess at the
+     * ids Magento generates for configuration fields.
+     */
+    protected function _toHtml(): string
+    {
+        return '<div class="goodahead-tier-table">' . parent::_toHtml() . '</div>';
     }
 }

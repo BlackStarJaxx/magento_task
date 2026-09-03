@@ -44,7 +44,7 @@
                        showInDefault="1" showInWebsite="1" showInStore="0" canRestore="1">
                     <label>Card methods governed by tiers</label>
                     <source_model>Magento\Payment\Model\Config\Source\Allmethods</source_model>
-                    <comment><![CDATA[Methods hidden when a tier allows no cards. Check / Money Order and Bank Transfer are filtered out in code even if selected here, so AC-8 cannot be broken from the admin panel.]]></comment>
+                    <comment><![CDATA[Methods hidden when a tier allows no cards.]]></comment>
                 </field>
             </group>
         </section>

@@ -1,0 +1,16 @@
+# Static analysis for the Goodahead modules.
+#
+# Deliberately here rather than inside each module: a module installed into a store should
+# carry its own code, not the project's tooling. This sits one level above both, covers them
+# together, and never ships.
+#
+# Magento's own configuration is included so that its bootstrap, its DataObject reflection
+# extension and its ignore list apply; it does not set a level, so one is set here.
+includes:
+    - ../../../dev/tests/static/testsuite/Magento/Test/Php/_files/phpstan/phpstan.neon
+
+parameters:
+    level: 8
+    paths:
+        - PaymentTiers
+        - OrderSync

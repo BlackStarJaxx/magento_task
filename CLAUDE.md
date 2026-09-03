@@ -78,15 +78,21 @@ bin/cli php app/code/foo.php # run a throwaway script (see the mount caveat belo
 ### The pre-push gate
 
 ```bash
-./qa.sh
+bin/cli sh -c "cd app/code/Goodahead && ./qa.sh"
 ```
 
+It lives beside the modules, not at the repository root, and finds the Magento root by walking
+up — no Docker knowledge inside it, because it ships with the modules. On the host `vendor/`
+is invisible, so it must be run in the container.
+
 Run it before handing over a commit message, and treat a non-zero exit as "not finished".
-It runs, inside the container, in this order:
+It runs, in this order:
 
 1. `phpcs --standard=Magento2 --warning-severity=0` over `app/code/Goodahead`
-2. `phpstan analyse` with `app/code/Goodahead/PaymentTiers/phpstan.neon` (**level 8**, and it
-   includes Magento's own config for the bootstrap and DataObject reflection extension)
+2. `phpstan analyse` with `app/code/Goodahead/phpstan.neon` (**level 8**, and it includes
+   Magento's own config for the bootstrap and DataObject reflection extension). One config
+   covering both modules, deliberately a level above them: a module installed into a store
+   ships its own code, not the project's tooling.
 3. the module's unit tests
 4. two Definition-of-Done greps: no `ObjectManager` in module code, no `<preference` in XML
 

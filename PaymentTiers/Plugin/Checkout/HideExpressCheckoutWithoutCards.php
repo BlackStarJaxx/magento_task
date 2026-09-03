@@ -11,18 +11,16 @@ use Psr\Log\LoggerInterface;
 use StripeIntegration\Payments\Model\ExpressCheckout\Config;
 
 /**
- * Hides the express wallet buttons in any tier that restricts cards.
+ * Hides the express wallet buttons when the tier allows no cards at all.
  *
  * AC-5 puts Apple Pay, Google Pay and Link on the same footing as cards. They are not Magento
  * payment methods, so the method-availability observer never sees them: the Stripe module
  * renders them from its own configuration, and this is where that is decided.
  *
- * They are hidden in the brand-restricted tier as well as the no-cards one, which is stricter
- * than AC-5 asks. The reason is that express buttons confirm the intent in the browser and
- * reach the server already paid, so the placement guard never runs for them and a
- * Visa-funded wallet could not be refused. Until the post-confirmation backstop exists,
- * closing the path is the only honest option; the cost is that an Amex-funded wallet is
- * refused too. Recorded in the README as a known cut.
+ * In the brand-restricted tier they stay on offer, because AC-5 wants an Amex-funded wallet
+ * accepted there. What makes that safe is VerifyBrandAfterConfirmation: express buttons
+ * confirm in the browser and arrive already paid, so a wallet funded by the wrong brand is
+ * caught immediately afterwards and the authorisation released.
  */
 class HideExpressCheckoutWithoutCards
 {
@@ -51,9 +49,7 @@ class HideExpressCheckoutWithoutCards
                 return true;
             }
 
-            $tier = $this->tierSnapshot->forQuote($quote);
-
-            return $tier->isCardAvailable() && !$tier->isBrandRestricted();
+            return $this->tierSnapshot->forQuote($quote)->isCardAvailable();
         } catch (\Throwable $e) {
             // Never break the page over presentation.
             $this->logger->error('Goodahead_PaymentTiers: express checkout tier check failed. ' . $e->getMessage());

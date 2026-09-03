@@ -10,6 +10,18 @@
                 sortOrder="10"/>
     </type>
 
+    <type name="StripeIntegration\Payments\Model\PaymentIntent">
+        <plugin name="goodahead_payment_tiers_stamp_intent"
+                type="Goodahead\PaymentTiers\Plugin\StampIntentForTier"
+                sortOrder="10"/>
+    </type>
+
+    <type name="StripeIntegration\Payments\Model\PaymentElement">
+        <plugin name="goodahead_payment_tiers_verify_after_confirmation"
+                type="Goodahead\PaymentTiers\Plugin\VerifyBrandAfterConfirmation"
+                sortOrder="10"/>
+    </type>
+
     <type name="StripeIntegration\Payments\Model\ExpressCheckout\Config">
         <plugin name="goodahead_payment_tiers_hide_express"
                 type="Goodahead\PaymentTiers\Plugin\Checkout\HideExpressCheckoutWithoutCards"

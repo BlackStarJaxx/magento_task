@@ -28,8 +28,11 @@ and anything else refused, and that is what happens — pre-authorisation, on th
 path, with no special case.
 
 This holds for the Payment Element flow. Express wallet buttons confirm on the client and
-arrive already successful (ADR-0002 §3); the guard cannot refuse those, and the
-post-confirmation backstop remains necessary for that path.
+arrive already successful (ADR-0002 §3); the guard cannot refuse those. That path is covered by
+the backstop instead — a plugin on `PaymentElement::confirm` reads the brand from the charge and
+releases the money when it is not allowed. Restricted tiers force `capture_method: manual`
+(`StampIntentForTier`) so releasing is dropping a hold rather than issuing a refund, and the
+whole thing still happens before the order row is written.
 
 ### 2. A card whose brand cannot be established is refused
 

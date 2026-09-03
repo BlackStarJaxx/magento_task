@@ -39,7 +39,10 @@ set. Core Bank Transfer ships disabled and AC-8 names it, so enable it if it is 
 
 ## Configuration
 
-Stores → Configuration → Sales → **Payment Tiers** and **Order Sync**, both at website scope.
+Stores → Configuration → Sales → **Payment Tiers** and **Order Sync**. Both sections are
+declared at website scope, so a multi-site store can hold different limits per website.
+
+`Goodahead_PaymentTiers`:
 
 | Path | Default |
 |---|---|
@@ -48,21 +51,32 @@ Stores → Configuration → Sales → **Payment Tiers** and **Order Sync**, bot
 | `goodahead_payment_tiers/tiers/rows` | `10000.00` all brands · `20000.00` amex · unbounded, none |
 | ↳ per-tier columns | upper bound · allowed brands · **allowed methods** (blank = all) · customer message |
 | `goodahead_payment_tiers/methods/restricted` | the four Stripe methods that take a card |
+
+`Goodahead_OrderSync`:
+
+| Path | Default |
+|---|---|
 | `goodahead_ordersync/endpoint/url` | `https://example.invalid/orders` |
 | `goodahead_ordersync/endpoint/timeout` | `10` seconds |
 | `goodahead_ordersync/retry/max_attempts` | `6` attempts in total |
-| `goodahead_ordersync/retry/base_delay` · `max_delay` | `60` · `3600` seconds, doubling with jitter |
+| `goodahead_ordersync/retry/base_delay` | `60` seconds |
+| `goodahead_ordersync/retry/max_delay` | `3600` seconds |
 | `goodahead_ordersync/reconcile/window_days` | `7` days the cron sweeper looks back |
 
+The retry policy is exponential from `base_delay`, doubling each attempt with jitter and
+capped at `max_delay`; after `max_attempts` the row becomes terminal rather than retrying
+further. The reconciliation window is configurable so that installing on a store with history
+does not dispatch everything ever placed.
+
 Tier bounds are **inclusive**, exactly one tier must be unbounded, and a tier that narrows
-brands must carry a customer message — all enforced when the configuration is saved, along with
-unknown brands, unknown method codes, duplicate bounds and an offline method placed in the
-methods column. No threshold appears in code (AC-7).
+brands must carry a customer message — all enforced when the configuration is saved, along
+with unknown brands, unknown method codes, duplicate bounds and an offline method placed in
+the methods column. No threshold appears in code (AC-7).
 
-The methods column narrows the governed methods for one tier; blank means the tier says nothing
-about methods and only the brand rule applies, which is what the defaults do.
+The methods column narrows the governed methods for one tier; blank means the tier says
+nothing about methods and only the brand rule applies, which is what the defaults do.
 
-## Part 1 — where enforcement sits
+## `Goodahead_PaymentTiers` — where enforcement sits
 
 | Layer | Where | Does |
 |---|---|---|
@@ -97,7 +111,7 @@ the Stripe Elements instance the browser created, and setting it server-side alo
 refuse the confirmation outright. A merchant who wants the cleaner unwind sets Stripe's payment
 action to authorise only, which keeps both sides in agreement.
 
-## Part 2 — how delivery is guaranteed
+## `Goodahead_OrderSync` — how delivery is guaranteed
 
 The endpoint does not deduplicate, and the trigger is unreliable in the other direction: a
 Stripe webhook can announce the same order late, twice, out of order. So the guarantee is a
@@ -135,9 +149,20 @@ had crossed one. A refused attempt leaves the intent at `requires_payment_method
 
 The delivery path was exercised against a local stub, because the endpoint in the brief
 (`https://example.invalid/orders`) is an RFC 2606 reserved name that never resolves — the
-shipped default cannot succeed by construction. Observed rather than reasoned about: a
-duplicate delivery collapsing to one logical dispatch, a persistent 500 driving the retry
-budget to a terminal state, and recovery from that state by an operator command.
+shipped default cannot succeed by construction.
+
+What was observed rather than reasoned about:
+
+| Claim | What was seen |
+|---|---|
+| Cards restricted at the boundary | $16,005: Visa refused before authorisation, Amex accepted; the order records `AE`, `0005` and the tier that allowed it |
+| Below $10,000 unchanged | small carts and a $22 checkout completed with no restriction and no message |
+| Offline never restricted | a **$25,025.40** order placed through Check / Money Order |
+| Exactly one delivery per order | four duplication attempts produced one row; the ledger holds 42 rows against 42 distinct `(order, event)` keys |
+| Retries bounded, failure visible | a persistent 500 drove a dispatch to a terminal state, discoverable by CLI, and an operator retry recovered it |
+| Cancellation reaches finance | one order delivered `order_placed`, was cancelled, and delivered `order_cancelled` |
+| The stamp is not rolled back | that order's product still carries the `last_purchased_at` written at placement, five seconds before the cancellation |
+| The attribute stays out of the way | declared with `is_filterable`, `used_in_product_listing` and `is_searchable` all `0` |
 
 This repository ships the modules; the throwaway scripts that produced those observations are
 not part of it.
@@ -187,8 +212,11 @@ not part of it.
   release are verified against the sandbox with a confirmed manual-capture intent, and the
   decision logic is unit-tested, but no payment has been pushed through an actual wallet UI —
   those need domain verification a local host cannot have.
-- **A repeated Stripe webhook.** Duplicate delivery is exercised with duplicate queue messages
-  and duplicate registration; replaying a real webhook needs `stripe listen` and was not run.
+- **A repeated Stripe webhook.** The Definition of Done names this explicitly. Duplicate
+  delivery is exercised with duplicate queue messages and duplicate registration, and the
+  guarantee does not depend on where the duplicate came from — the unique key is derived from
+  the order, not from the trigger — but replaying a real webhook needs `stripe listen` against
+  a forwarded endpoint and was not run.
 - **Integration tests.** Both self-tests are scripts run by hand rather than by CI.
 - **A brand multiselect in the admin.** The tier table uses validated text columns; the brief
   puts admin UI beyond a `system.xml` section out of scope.

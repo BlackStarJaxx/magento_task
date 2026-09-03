@@ -34,9 +34,8 @@ placed, whether it survives a crafted request, and the quality of the reasoning 
 README — not on volume of code.
 
 - Magento Open Source **2.4.9**, PHP **8.5.6**, MariaDB 11.8, OpenSearch, Redis, RabbitMQ
-- Official Stripe module `StripeIntegration_Payments` **4.6.5**, installed into
-  `src/app/code/` from the vendor's raw package channel, with `stripe/stripe-php` 20.3.1
-- Environment is `markshust/docker-magento` at the repo root
+- Official Stripe module `StripeIntegration_Payments` **4.6.5** from the vendor's raw package
+  channel, with `stripe/stripe-php` 20.3.1
 
 Write to the standard the task is graded on: think about where a control belongs before
 writing it, prefer an extension point that survives an upgrade, and state the trade-off you
@@ -45,17 +44,17 @@ right layer.
 
 ## Repository layout
 
-Only the module code is tracked. `.gitignore` un-ignores exactly
-`src/app/code/Goodahead/` — the Magento application, vendor tree and `src/app/etc/env.php`
-stay out, and third-party modules dropped into `app/code` (Stripe) are ignored too.
+**This repository is the `Goodahead` vendor folder.** Its root is exactly what gets copied
+into `app/code/Goodahead/` of a Magento installation — nothing above that is tracked.
 
 ```
-bin/ env/ lib/ template/ compose*.yaml Makefile   docker-magento environment (tracked)
-src/                                              Magento root (ignored)
-src/app/code/Goodahead/PaymentTiers/               Part 1 (tracked)
-docs/adr/                                         decisions, numbered, shipped
-docs/verification/                                observed evidence for the Definition of Done
-docs/ANALYSIS.md, docs/PLAN.md                    working notes, deliberately NOT tracked
+PaymentTiers/        Part 1
+OrderSync/           Part 2
+phpstan.neon         one config for both, above them: a module ships code, not tooling
+qa.sh                the pre-push gate, likewise
+docs/adr/            decisions, numbered, shipped
+docs/verification/   observed evidence for the Definition of Done
+docs/ANALYSIS.md, docs/PLAN.md     working notes, deliberately NOT tracked
 ```
 
 `docs/adr/` and `docs/verification/` are deliverables. An ADR is written only when a
@@ -63,12 +62,35 @@ competent reviewer would ask "why?", the answer is not visible in the code, and 
 alternative was rejected for a real cost. Repository plumbing decisions are README material,
 not ADRs.
 
+Two modules because `PaymentTiers` depends on the Stripe module and `OrderSync` must not.
+
+## The environment around it
+
+The development environment is `markshust/docker-magento` and **lives outside this
+repository** — four levels up, where this folder sits at `src/app/code/Goodahead`. Its
+helper scripts are not tracked here and must never be referenced from anything that ships.
+
+```
+<env>/bin/magento, bin/cli, bin/composer     from the environment root, not this one
+<env>/src/                                   the Magento root, mapped to /var/www/html
+<env>/env/magento.env                        admin credentials
+```
+
+Site: `https://magento.test` (self-signed cert — `curl -k`). Deploy mode is `developer`, so
+static assets are generated on request.
+
+Core Bank Transfer is enabled in this installation (`payment/banktransfer/active = 1`); it
+ships disabled and AC-8 names it, so that is deliberate and the README documents it. Nothing
+else in `core_config_data` is a leftover from testing — the tier and OrderSync sections all
+run on the defaults declared in `config.xml`.
+
 ## Commands
 
-Everything runs inside the `phpfpm` container. The container's working directory is
-`/var/www/html`.
+Everything runs inside the `phpfpm` container, whose working directory is `/var/www/html`.
+The helper scripts are at the environment root, so from this folder that is `../../../..`:
 
 ```bash
+cd ../../../..               # the environment root; the rest of this section assumes it
 bin/magento <cmd>            # Magento CLI
 bin/cli <cmd>                # any command in the container
 bin/composer <cmd>           # composer inside the container
@@ -88,13 +110,15 @@ is invisible, so it must be run in the container.
 Run it before handing over a commit message, and treat a non-zero exit as "not finished".
 It runs, in this order:
 
-1. `phpcs --standard=Magento2 --warning-severity=0` over `app/code/Goodahead`
-2. `phpstan analyse` with `app/code/Goodahead/phpstan.neon` (**level 8**, and it includes
-   Magento's own config for the bootstrap and DataObject reflection extension). One config
-   covering both modules, deliberately a level above them: a module installed into a store
-   ships its own code, not the project's tooling.
-3. the module's unit tests
+1. `phpcs --standard=Magento2 --warning-severity=0`
+2. `phpstan analyse` at **level 8**, including Magento's own config for the bootstrap and the
+   DataObject reflection extension
+3. both modules' unit tests
 4. two Definition-of-Done greps: no `ObjectManager` in module code, no `<preference` in XML
+
+Steps 1 and 4 name `PaymentTiers` and `OrderSync` rather than scanning this whole folder:
+`docs/verification/` ships throwaway CLI scripts that legitimately `echo`, `exit` and reach
+for the ObjectManager, and they would fail a gate meant for module code.
 
 PHPStan is the check that earns its place. It caught a `beforeSave()` whose entire body —
 validation included — was unreachable, two calls to `CartInterface` methods the interface
@@ -130,9 +154,6 @@ Stripe module 27.3, measured against the same standard. Adding empty `/** @retur
 blocks to satisfy a sniff makes the code worse. See
 `docs/verification/tests-and-coding-standards.md`.
 
-Site: `https://magento.test` (self-signed cert — `curl -k`). Admin credentials are in
-`env/magento.env`. Deploy mode is `developer`, so static assets are generated on request.
-
 ## Environment caveats that will cost you time
 
 **Only four paths are bind-mounted from the host** (`compose.dev.yaml`): `src/app/code`,
@@ -144,10 +165,6 @@ absolute path (`require '/var/www/html/app/bootstrap.php';`). Delete it afterwar
 The DB client in the `db` container is `mariadb`, not `mysql`.
 
 The host has no `pdftotext`; `gs -sDEVICE=txtwrite` reads the brief.
-
-Environment state changed for testing and **not yet restored** — check before delivery:
-`cataloginventory/item_options/manage_stock` is `0`, and `payment/banktransfer/active` was
-turned on (core Bank Transfer ships disabled and AC-8 names it).
 
 ## Architecture
 
@@ -178,21 +195,43 @@ Three layers, and they are not redundant:
 |---|---|---|
 | Presentation | `Observer\RestrictCardMethodsByTier` on `payment_method_is_active` | hides card methods when the tier allows **no** cards. Leaves the method visible when only brands are narrowed — AC-2 requires that |
 | Enforcement | `Model\TierGuard` via a plugin on `Helper\PaymentIntent::getConfirmParams` | the control that actually holds; recomputes everything from the **order** |
-| Backstop | not yet built | express wallet buttons and GraphQL confirm on the client and arrive already successful, so only post-confirmation verification can catch those |
+| Backstop | `Plugin\VerifyBrandAfterConfirmation` on `PaymentElement::confirm` | express wallets and GraphQL confirm on the client and arrive already successful; this reads the brand off the charge and releases the payment — cancel if uncaptured, refund if captured |
 
 Domain pieces: `Tier` (immutable, inclusive upper bound), `TierProvider` (config → tiers,
-fails closed), `TierResolver` (narrowest containing tier, order-independent), `MinorUnits`
-(bcmath), `CardBrand` (one vocabulary), `ComparableAmount` (quote/order → USD cents),
-`RestrictedMethods` + `OfflineMethods` (policy), `Model\Stripe\BrandReader` (the only class
-that knows how the Stripe module carries a payment method).
+fails closed), `TierResolver` (narrowest containing tier, order-independent), `TierForOrder`
+(the shared resolver — `isGoverned()` and `resolve()` are separate so "governed but
+unpriceable" means refuse), `MinorUnits` (bcmath, USD only), `CardBrand` (one vocabulary),
+`ComparableAmount` (quote/order → USD cents), `RestrictedMethods` + `OfflineMethods`
+(policy), `Order\TierDecisionRecorder` (writes the decision onto the order).
+
+`Model\Stripe\` is the only place that knows how the Stripe module carries a payment method:
+`BrandReader` before confirmation, `ConfirmedPaymentReader` after it. A plugin on
+`Config::getMetadata` stamps the tier — not on the intent creation params, because the module
+replaces metadata wholesale in three places downstream of those.
 
 ### Part 2 — `Goodahead_OrderSync`
 
-Not built yet. Planned shape: a ledger table with `UNIQUE KEY (order_id, event_type)` as the
-exactly-once guarantee, registered inside the order transaction; an AMQP publish after
-commit, wrapped so a dead broker leaves the row `pending` for a cron sweeper; retries with
-bounded backoff and a discoverable terminal state. RabbitMQ is already configured in
-`env.php`, and the transport is one attribute in `queue_consumer.xml`.
+A ledger table with `UNIQUE KEY (order_id, event_type)` is the exactly-once guarantee: the
+database decides, not a check-then-insert with a race in the middle (ADR-0006).
+
+```
+sales_order_save_after / order_cancel_after
+  Observer\Register*Order            registers a ledger row, swallowing its own failures
+    ResourceModel\Dispatch::register()   duplicate key = already registered, not an error
+  AMQP publish after commit          never throws; a dead broker just leaves the row pending
+Cron\DispatchSweeper                 reconciles rows nobody registered, then delivers due ones
+```
+
+The observers are wrapped whole, because anything escaping them rolls back the order save.
+That makes the sweeper load-bearing rather than decorative: it re-finds paid and cancelled
+orders that have no ledger row within a configurable window, so a failure anywhere on the
+fast path delays a delivery instead of losing one.
+
+`ResponseClassifier` decides retryable from terminal; **409 counts as success**, because it
+means an earlier attempt landed. `Payload\OrderPayloadBuilder` is a composite over
+`PayloadSectionInterface` implementations wired in `di.xml`, one per section of the document.
+`Catalog\PurchaseRecencyStamper` writes `last_purchased_at` through
+`Product\Action::updateAttributes()`, chunked, at default store scope.
 
 ## Rules this codebase holds itself to
 

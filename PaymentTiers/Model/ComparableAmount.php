@@ -7,6 +7,7 @@ namespace Goodahead\PaymentTiers\Model;
 use Goodahead\PaymentTiers\Model\Config\Source\CurrencyMode;
 use Magento\Directory\Model\CurrencyFactory;
 use Magento\Quote\Api\Data\CartInterface;
+use Magento\Quote\Model\Quote;
 use Magento\Sales\Api\Data\OrderInterface;
 use Psr\Log\LoggerInterface;
 
@@ -44,6 +45,14 @@ class ComparableAmount
      */
     public function fromQuote(CartInterface $quote, ?int $websiteId = null): ?int
     {
+        // CartInterface publishes no totals at all — they live on the model, and on
+        // Quote\Api\Data\TotalsInterface, which would cost a repository round trip on every
+        // payment method evaluated. Anything that is not the model cannot be priced here, and
+        // an unknown value is never read as a small one.
+        if (!$quote instanceof Quote) {
+            return null;
+        }
+
         return $this->convert(
             (float)$quote->getBaseGrandTotal(),
             (string)$quote->getBaseCurrencyCode(),

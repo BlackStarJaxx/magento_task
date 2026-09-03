@@ -24,6 +24,9 @@ use Magento\Framework\Serialize\Serializer\Json;
  */
 class Tiers extends Value
 {
+    /**
+     * @param array<string, mixed> $data
+     */
     public function __construct(
         Context $context,
         Registry $registry,
@@ -40,42 +43,51 @@ class Tiers extends Value
 
     public function beforeSave(): self
     {
+        /**
+         * Magento's docblock narrows this to string, but a field array posts an array of
+         * rows keyed by row id. Anything that is already a string has been serialized
+         * before (a config import, for instance) and is passed through untouched.
+         *
+         * @var mixed $value
+         */
         $value = $this->getValue();
 
-        if (is_string($value)) {
-            return parent::beforeSave();
-        }
+        if (is_array($value)) {
+            $rows = [];
 
-        $rows = [];
+            foreach ($value as $key => $row) {
+                if ($key === '__empty' || !is_array($row)) {
+                    continue;
+                }
 
-        foreach ((array)$value as $key => $row) {
-            if ($key === '__empty' || !is_array($row)) {
-                continue;
+                $rows[] = [
+                    'upper_bound' => trim((string)($row['upper_bound'] ?? '')),
+                    'brands' => trim((string)($row['brands'] ?? '')),
+                    'message' => trim((string)($row['message'] ?? '')),
+                ];
             }
 
-            $rows[] = [
-                'upper_bound' => trim((string)($row['upper_bound'] ?? '')),
-                'brands' => trim((string)($row['brands'] ?? '')),
-                'message' => trim((string)($row['message'] ?? '')),
-            ];
+            $this->validate($rows);
+            $this->setValue((string)$this->serializer->serialize($rows));
         }
-
-        $this->validate($rows);
-        $this->setValue($this->serializer->serialize($rows));
 
         return parent::beforeSave();
     }
 
-    protected function _afterLoad(): void
+    /**
+     * @return $this
+     */
+    protected function _afterLoad()
     {
+        /** @var mixed $value */
         $value = $this->getValue();
 
         if (is_string($value) && $value !== '') {
             $decoded = $this->serializer->unserialize($value);
-            $this->setValue(is_array($decoded) ? $decoded : []);
+            $this->setData('value', is_array($decoded) ? $decoded : []);
         }
 
-        parent::_afterLoad();
+        return parent::_afterLoad();
     }
 
     /**

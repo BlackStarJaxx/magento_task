@@ -29,7 +29,7 @@ class Tiers extends AbstractFieldArray
         $this->addColumn('message', ['label' => __('Customer message')]);
 
         $this->_addAfter = false;
-        $this->_addButtonLabel = __('Add tier');
+        $this->_addButtonLabel = (string)__('Add tier');
     }
 
     /**

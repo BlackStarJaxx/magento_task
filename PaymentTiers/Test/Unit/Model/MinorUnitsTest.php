@@ -23,6 +23,9 @@ class MinorUnitsTest extends TestCase
         self::assertSame($expected, $this->minorUnits->fromAmount($amount));
     }
 
+    /**
+     * @return array<string, array{float|int|string, int}>
+     */
     public static function amountProvider(): array
     {
         return [

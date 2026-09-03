@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <section id="goodahead_ordersync" translate="label" type="text" sortOrder="910"
+                 showInDefault="1" showInWebsite="1" showInStore="1">
+            <class>separator-top</class>
+            <label>Order Sync</label>
+            <tab>sales</tab>
+            <resource>Goodahead_OrderSync::config</resource>
+
+            <group id="general" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>General</label>
+                <field id="enabled" translate="label comment" type="select" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Enable the finance push</label>
+                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+                    <comment>When disabled nothing is registered and nothing is delivered. Orders already in the ledger are left alone.</comment>
+                </field>
+            </group>
+
+            <group id="endpoint" translate="label" type="text" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Endpoint</label>
+                <field id="url" translate="label comment" type="text" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Finance endpoint URL</label>
+                    <comment><![CDATA[Orders are POSTed here as JSON with an <b>Idempotency-Key</b> header. The default (example.invalid) never resolves and will always fail — that is intentional.]]></comment>
+                </field>
+                <field id="timeout" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Timeout (seconds)</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment>A timeout counts as a transient failure and is retried.</comment>
+                </field>
+            </group>
+
+            <group id="retry" translate="label" type="text" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Retry policy</label>
+                <field id="max_attempts" translate="label comment" type="text" sortOrder="10"
+                       showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Maximum attempts</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment>Attempts in total, not retries after the first. When they are used up the delivery becomes terminally failed and an operator has to act.</comment>
+                </field>
+                <field id="base_delay" translate="label comment" type="text" sortOrder="20"
+                       showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Base delay (seconds)</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                    <comment>Delay before the second attempt. It doubles each time, with jitter, up to the cap.</comment>
+                </field>
+                <field id="max_delay" translate="label comment" type="text" sortOrder="30"
+                       showInDefault="1" showInWebsite="1" showInStore="1" canRestore="1">
+                    <label>Maximum delay (seconds)</label>
+                    <validate>validate-digits validate-greater-than-zero</validate>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

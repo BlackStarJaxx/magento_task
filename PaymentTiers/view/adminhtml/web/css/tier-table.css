@@ -22,19 +22,35 @@ tr:has(> td.value > .goodahead-tier-table) > td.value {
     table-layout: fixed;
 }
 
+/*
+ * Four editable columns plus the delete action. Percentages rather than pixels so the table
+ * stays usable at the widths the admin panel actually offers.
+ */
 .goodahead-tier-table table th:nth-child(1),
 .goodahead-tier-table table td:nth-child(1) {
-    width: 16%;
+    width: 12%;
 }
 
 .goodahead-tier-table table th:nth-child(2),
 .goodahead-tier-table table td:nth-child(2) {
-    width: 28%;
+    width: 23%;
 }
 
 .goodahead-tier-table table th:nth-child(3),
 .goodahead-tier-table table td:nth-child(3) {
-    width: 42%;
+    width: 21%;
+}
+
+.goodahead-tier-table table th:nth-child(4),
+.goodahead-tier-table table td:nth-child(4) {
+    width: 32%;
+}
+
+/* The delete control needs room of its own, or it overflows the row. */
+.goodahead-tier-table table th:nth-child(5),
+.goodahead-tier-table table td:nth-child(5) {
+    width: 12%;
+    text-align: center;
 }
 
 .goodahead-tier-table table input[type="text"] {

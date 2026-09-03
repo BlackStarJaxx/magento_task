@@ -102,6 +102,22 @@ class DispatchSweeper
             }
         }
 
+        foreach ($this->dispatchResource->findCancelledOrdersWithoutDispatch($since, self::BATCH_SIZE) as $orderId) {
+            try {
+                $order = $this->orderRepository->get($orderId);
+
+                if ($this->registrar->register($order, EventType::ORDER_CANCELLED) !== null) {
+                    $registered++;
+                    $this->logger->warning(sprintf(
+                        'Goodahead_OrderSync: order %s was cancelled but finance was never told; the sweep registered it.',
+                        (string)$order->getIncrementId()
+                    ));
+                }
+            } catch (\Throwable $e) {
+                $this->logger->error('Goodahead_OrderSync: reconciling the cancellation of order ' . $orderId . ' failed. ' . $e->getMessage());
+            }
+        }
+
         return $registered;
     }
 }

@@ -250,6 +250,41 @@ class Dispatch
         return array_map('intval', $connection->fetchCol($select));
     }
 
+    /**
+     * Cancelled orders that finance was told about but never told were cancelled.
+     *
+     * The mirror of the query above, and the more damaging of the two to miss: finance would
+     * keep a cancelled order on its books as a live sale. Only orders whose placement was
+     * actually delivered are considered — cancelling something finance never received would
+     * be a correction against a record that does not exist.
+     *
+     * @return int[] order entity ids
+     */
+    public function findCancelledOrdersWithoutDispatch(string $since, int $limit): array
+    {
+        $connection = $this->resourceConnection->getConnection();
+
+        $select = $connection->select()
+            ->from(['o' => $this->resourceConnection->getTableName('sales_order')], ['entity_id'])
+            ->join(
+                ['placed' => $this->getTable()],
+                $connection->quoteInto('placed.order_id = o.entity_id AND placed.event_type = ?', EventType::ORDER_PLACED),
+                []
+            )
+            ->joinLeft(
+                ['cancelled' => $this->getTable()],
+                $connection->quoteInto('cancelled.order_id = o.entity_id AND cancelled.event_type = ?', EventType::ORDER_CANCELLED),
+                []
+            )
+            ->where('cancelled.entity_id IS NULL')
+            ->where('o.state = ?', 'canceled')
+            ->where('o.updated_at >= ?', $since)
+            ->order('o.entity_id ASC')
+            ->limit($limit);
+
+        return array_map('intval', $connection->fetchCol($select));
+    }
+
     public function getById(int $id): ?Record
     {
         $connection = $this->resourceConnection->getConnection();

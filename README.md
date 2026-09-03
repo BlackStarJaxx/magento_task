@@ -71,7 +71,12 @@ about methods and only the brand rule applies, which is what the defaults do.
 | **Enforcement** | plugin on `Helper\PaymentIntent::getConfirmParams` | refuses the payment before Stripe confirms |
 | **Backstop** | plugin on `PaymentElement::confirm` | checks the brand of a payment confirmed in the browser and releases it |
 
-The third is the one that holds. Reading the vendor source showed the brief's premise — "the
+The no-cards tier goes through the `payment_method_is_active` event rather than a
+`SpecificationInterface` registered into `MethodList`, because a `MethodList`-only hook does
+not cover order placement: `isAvailable()` is called there directly, which is precisely the
+path a hostile client takes.
+
+The third row is the one that holds. Reading the vendor source showed the brief's premise — "the
 payment is confirmed from the customer's browser … not against our server" — does not hold for
 this module version: the Payment Element flow calls `paymentIntents->confirm()` **server-side,
 inside the order transaction, before the order row is written**. So the brand is knowable before
@@ -97,7 +102,7 @@ action to authorise only, which keeps both sides in agreement.
 The endpoint does not deduplicate, and the trigger is unreliable in the other direction: a
 Stripe webhook can announce the same order late, twice, out of order. So the guarantee is a
 ledger row per logical delivery with `UNIQUE KEY (order_id, event_type)` — the database decides,
-not a check-then-insert with a race in the middle (ADR-0006).
+not a check-then-insert with a race in the middle.
 
 Registration happens on `sales_order_save_after` behind a paid-state test, because every route
 to a paid order ends in a save. Over-triggering costs one indexed lookup; under-triggering loses
@@ -113,8 +118,7 @@ visible in the ledger, as an order comment, and in the log.
 `last_purchased_at` is written with `Product\Action::updateAttributes()`, Magento's own bulk
 attribute writer: 85 ms for 200 products against ~42 s for the save-per-product mechanism AC-14
 rules out. A raw batched insert was measured at 10 ms and rejected — the 75 ms is not worth
-owning the EAV table layout and skipping the attribute event other extensions listen to
-([evidence](docs/verification/purchase-recency.md)).
+owning the EAV table layout and skipping the attribute event other extensions listen to.
 
 ## Verifying it
 
@@ -123,15 +127,20 @@ owning the EAV table layout and skipping the attribute event other extensions li
            # for the two Definition-of-Done bans (ObjectManager, foreign preference)
 ```
 
-Two self-tests in [`docs/verification/`](docs/verification) place real orders and assert what
-both sides ended up holding. The second needs the stub shipped beside it, because the endpoint
-in the brief (`https://example.invalid/orders`) is an RFC 2606 reserved name that never resolves
-— the shipped default cannot succeed by construction.
+Enforcement was verified by bypass rather than by using the checkout as intended: orders
+placed straight through `CartManagementInterface::placeOrder`, with no checkout page and no
+JavaScript, and an intent created while the cart was below a threshold then replayed once it
+had crossed one. A refused attempt leaves the intent at `requires_payment_method` with
+`amount_received = 0.00`, and no order row is written.
 
-Part 1's self-test calls `CartManagementInterface::placeOrder` directly — no checkout page, no
-JavaScript — which is what AC-1 means by a crafted request. Part 2's drives the real retry path
-to a terminal failure and back. [`docs/MANUAL-TESTING.md`](docs/MANUAL-TESTING.md) covers what
-needs eyes rather than a script; the decisions are in [`docs/adr/`](docs/adr).
+The delivery path was exercised against a local stub, because the endpoint in the brief
+(`https://example.invalid/orders`) is an RFC 2606 reserved name that never resolves — the
+shipped default cannot succeed by construction. Observed rather than reasoned about: a
+duplicate delivery collapsing to one logical dispatch, a persistent 500 driving the retry
+budget to a terminal state, and recovery from that state by an operator command.
+
+This repository ships the modules; the throwaway scripts that produced those observations are
+not part of it.
 
 ## Decisions on what the task left open
 
@@ -166,10 +175,11 @@ needs eyes rather than a script; the decisions are in [`docs/adr/`](docs/adr).
   it allowed. The Stripe module stores none of it and the admin fetches the brand live, so it
   vanishes if keys are rotated; and the tier table is configuration, so a year later nothing
   else would explain why a $16,010 order was allowed on Amex.
-- **`cctypes` in the Stripe module is dead config** and `card_icons_specific` is cosmetic
-  (ADR-0001). **`payment_method_options[card][restrictions]` does not exist on PaymentIntents**
-  — it does on Checkout Sessions, but only by moving every customer to a redirect checkout
-  (ADR-0003).
+- **`cctypes` in the Stripe module is dead config** — it ships a default listing exactly the
+  brands this task cares about, and nothing reads it; `card_icons_specific` is cosmetic.
+  **`payment_method_options[card][restrictions]` does not exist on PaymentIntents** — it is
+  real, but only on Checkout Sessions, and reaching it would mean moving every customer to a
+  redirect checkout.
 
 ## What was cut
 

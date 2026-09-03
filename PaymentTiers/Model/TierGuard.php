@@ -15,8 +15,8 @@ use Magento\Store\Model\StoreManagerInterface;
  *
  * Runs immediately before the payment intent is confirmed, which on the Payment Element
  * flow happens server-side inside the order transaction — so throwing here means no
- * authorisation is taken and no order row is written. Verified in
- * docs/verification/refusal-at-confirm.md.
+ * authorisation is taken and no order row is written: a refused attempt leaves the intent at
+ * requires_payment_method with amount_received = 0.
  *
  * Everything is recomputed from the order, never trusted from the client or from the intent:
  * the order is built server-side from the quote, so an intent created when the cart was $500

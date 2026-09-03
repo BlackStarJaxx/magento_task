@@ -1,12 +1,3 @@
-# Working notes — not deliverables. The ADRs and the verification evidence in
-# docs/adr/ and docs/verification/ ARE shipped; these two are the draft reasoning
-# behind them.
-/docs/ANALYSIS.md
-/docs/PLAN.md
-
-# The task brief is their document, not our solution
-Goodahead-Backend-Task.pdf
-
 # IDE
 .idea/
 .vscode/

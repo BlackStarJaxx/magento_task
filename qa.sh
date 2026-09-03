@@ -28,8 +28,8 @@ fi
 
 MODULE_REL="${MODULE_DIR#"${MAGENTO_ROOT}"/}"
 
-# The two modules by name, not the whole folder: docs/verification ships throwaway CLI
-# scripts that legitimately echo, exit and reach for the ObjectManager.
+# The two modules by name, so the gate stays pointed at module code even when throwaway
+# scripts sit beside them in this folder.
 MODULES="${MODULE_REL}/PaymentTiers ${MODULE_REL}/OrderSync"
 MODULE_DIRS="${MODULE_DIR}/PaymentTiers ${MODULE_DIR}/OrderSync"
 cd "${MAGENTO_ROOT}" || exit 2
@@ -49,9 +49,9 @@ run() {
     fi
 }
 
-# Errors only. The Magento2 standard's docblock warnings fire on typed accessors and are
-# carried by Magento core itself at a higher density than by these modules; see
-# docs/verification/tests-and-coding-standards.md.
+# Errors only. The Magento2 standard's docblock warnings fire on typed accessors, and
+# Magento core itself carries them at a higher density than these modules do; adding empty
+# docblocks to silence a sniff would make the code worse.
 run "Coding standards (Magento2)" \
     "vendor/bin/phpcs --standard=Magento2 --warning-severity=0 ${MODULES} 2>/dev/null"
 

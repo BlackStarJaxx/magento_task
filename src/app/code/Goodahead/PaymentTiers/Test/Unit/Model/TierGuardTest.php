@@ -6,6 +6,8 @@ namespace Goodahead\PaymentTiers\Test\Unit\Model;
 
 use Goodahead\PaymentTiers\Model\CardBrand;
 use Goodahead\PaymentTiers\Model\ComparableAmount;
+use Goodahead\PaymentTiers\Model\MinorUnits;
+use Goodahead\PaymentTiers\Model\Order\TierDecisionRecorder;
 use Goodahead\PaymentTiers\Model\RestrictedMethods;
 use Goodahead\PaymentTiers\Model\Stripe\BrandReader;
 use Goodahead\PaymentTiers\Model\Stripe\PaymentMethodDetails;
@@ -176,7 +178,9 @@ class TierGuardTest extends TestCase
         $storeManager = $this->createStub(StoreManagerInterface::class);
         $storeManager->method('getStore')->willReturn($store);
 
-        return new TierGuard($provider, $resolver, $methods, $amounts, $brands, $storeManager);
+        $recorder = new TierDecisionRecorder(new CardBrand(), new MinorUnits());
+
+        return new TierGuard($provider, $resolver, $methods, $amounts, $brands, $recorder, $storeManager);
     }
 
     private function order(): OrderInterface

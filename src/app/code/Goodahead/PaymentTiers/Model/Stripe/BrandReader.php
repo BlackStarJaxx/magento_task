@@ -82,7 +82,8 @@ class BrandReader
         return new PaymentMethodDetails(
             isset($stripeObject->type) ? (string)$stripeObject->type : null,
             is_string($brand) && trim($brand) !== '' ? $this->cardBrand->normalise($brand) : null,
-            isset($stripeObject->card->wallet->type) ? (string)$stripeObject->card->wallet->type : null
+            isset($stripeObject->card->wallet->type) ? (string)$stripeObject->card->wallet->type : null,
+            isset($stripeObject->card->last4) ? (string)$stripeObject->card->last4 : null
         );
     }
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Goodahead\PaymentTiers\Observer;
 
-use Goodahead\PaymentTiers\Model\QuoteAmount;
+use Goodahead\PaymentTiers\Model\ComparableAmount;
 use Goodahead\PaymentTiers\Model\RestrictedMethods;
 use Goodahead\PaymentTiers\Model\TierProvider;
 use Goodahead\PaymentTiers\Model\TierResolver;
@@ -36,7 +36,7 @@ class RestrictCardMethodsByTier implements ObserverInterface
         private readonly TierProvider $tierProvider,
         private readonly TierResolver $tierResolver,
         private readonly RestrictedMethods $restrictedMethods,
-        private readonly QuoteAmount $quoteAmount,
+        private readonly ComparableAmount $comparableAmount,
         private readonly StoreManagerInterface $storeManager,
         private readonly LoggerInterface $logger
     ) {
@@ -70,7 +70,7 @@ class RestrictCardMethodsByTier implements ObserverInterface
                 return;
             }
 
-            $amount = $this->quoteAmount->getComparableMinorUnits($quote, $websiteId);
+            $amount = $this->comparableAmount->fromQuote($quote, $websiteId);
 
             if ($amount === null) {
                 $result->setData('is_available', false);

@@ -1,0 +1,47 @@
+/*
+ * The tier table needs more room than the configuration form's value cell gives it.
+ *
+ * The admin configuration form is table markup: each field is a <tr> with a <td class="label">
+ * and a <td class="value">. Hiding the label cell for this one field lets the value cell take
+ * the full row, which is what a three-column editable table needs. The label is redundant
+ * here anyway, since the table carries its own column headings.
+ */
+/* Magento builds the row id as "row_" + section_group_field. */
+#row_goodahead_payment_tiers_tiers_rows > td.label,
+tr:has(> td.value > .goodahead-tier-table) > td.label {
+    display: none;
+}
+
+#row_goodahead_payment_tiers_tiers_rows > td.value,
+tr:has(> td.value > .goodahead-tier-table) > td.value {
+    width: 100%;
+}
+
+.goodahead-tier-table table {
+    width: 100%;
+    table-layout: fixed;
+}
+
+.goodahead-tier-table table th:nth-child(1),
+.goodahead-tier-table table td:nth-child(1) {
+    width: 16%;
+}
+
+.goodahead-tier-table table th:nth-child(2),
+.goodahead-tier-table table td:nth-child(2) {
+    width: 28%;
+}
+
+.goodahead-tier-table table th:nth-child(3),
+.goodahead-tier-table table td:nth-child(3) {
+    width: 42%;
+}
+
+.goodahead-tier-table table input[type="text"] {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.goodahead-tier-table td {
+    vertical-align: top;
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+    <preference for="Goodahead\OrderSync\Api\Data\DispatchMessageInterface"
+                type="Goodahead\OrderSync\Model\Queue\DispatchMessage"/>
+
+    <type name="Magento\Framework\Console\CommandListInterface">
+        <arguments>
+            <argument name="commands" xsi:type="array">
+                <item name="goodahead_ordersync_status" xsi:type="object">Goodahead\OrderSync\Console\Command\StatusCommand</item>
+                <item name="goodahead_ordersync_retry" xsi:type="object">Goodahead\OrderSync\Console\Command\RetryCommand</item>
+            </argument>
+        </arguments>
+    </type>
+</config>

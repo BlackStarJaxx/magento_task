@@ -9,15 +9,23 @@ Statement counts come from `SHOW SESSION STATUS LIKE 'Questions'` around each ca
 200 simple products. The slower two were measured on a smaller sample and scaled, because
 running `ProductRepository::save()` 200 times takes the better part of a minute.
 
-| Mechanism | Statements | Time |
-|---|---|---|
-| **Batched `insertOnDuplicate`** (shipped) | **1** | **8.2 ms** |
-| `Product\Action::updateAttributes()` | ~280 (28 per 20) | ~183 ms |
-| `ProductRepository::save()` per product | ~51,200 (1,280 per 5) | ~42 s |
+| Mechanism | Statements | Time | Indexers | Cache tags |
+|---|---|---|---|---|
+| **`Product\Action::updateAttributes()`** (shipped) | 207 | 85 ms | unchanged | unchanged |
+| Batched `insertOnDuplicate` | 1 | 10 ms | unchanged | unchanged |
+| `ProductRepository::save()` per product | ~51,200 (1,280 per 5) | ~42 s | — | — |
 
-The mechanism the acceptance criterion rules out is four orders of magnitude more expensive
-than the one shipped. `Product\Action::updateAttributes()` is the documented middle option and
-is named in the README as the right answer if the attribute ever becomes visible.
+The mechanism AC-14 rules out is four orders of magnitude more expensive than either of the
+others, so the real choice was between the first two.
+
+The raw insert was written first and then rejected on review. It is 75 ms cheaper for a
+200-line order, and the price is owning the EAV table layout, the entity link field and the
+chunking that go with them, while skipping the attribute's backend model and the
+`catalog_product_attribute_update_before` event other extensions listen to. Measuring the
+whole of AC-14 rather than only speed also removed the argument for it: the raw write was
+defensible because nothing indexes this attribute — and for that same reason
+`updateAttributes()` invalidates no indexer and no cache tag either. Paying 75 ms once per
+order to stay on a supported API is the better trade.
 
 ## What it did not do
 
@@ -26,9 +34,6 @@ indexers invalidated : none
 rows written         : 200
 stored values        : 200
 ```
-
-The whole run, including resolving the attribute metadata on a cold cache, was 7 statements;
-warm, the write itself is a single `INSERT ... ON DUPLICATE KEY UPDATE`.
 
 Nothing was invalidated because nothing indexes this attribute. Verified on the attribute row
 itself:

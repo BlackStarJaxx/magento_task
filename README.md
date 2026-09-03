@@ -134,8 +134,10 @@ Publishing never throws, so a dead broker means a later delivery rather than a l
 when the broker is down. Retries are exponential with jitter, bounded by a budget, and end in a
 terminal state visible in the ledger, as an order comment, and in the log.
 
-`last_purchased_at` is written in **one statement** for the whole order: 8.2 ms for 200
-products, against ~42 s for the save-per-product mechanism AC-14 rules out
+`last_purchased_at` is written with `Product\Action::updateAttributes()`, Magento's own bulk
+attribute writer: 85 ms for 200 products against ~42 s for the save-per-product mechanism
+AC-14 rules out. A raw batched insert was measured at 10 ms and rejected — the 75 ms is not
+worth owning the EAV table layout and skipping the attribute event other extensions listen to
 ([evidence](docs/verification/purchase-recency.md)).
 
 ## Decisions on what the task left open

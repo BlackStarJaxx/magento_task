@@ -5,29 +5,20 @@ declare(strict_types=1);
 namespace Goodahead\OrderSync\Model\Catalog;
 
 use Goodahead\OrderSync\Setup\Patch\Data\AddLastPurchasedAtAttribute;
-use Magento\Catalog\Api\Data\ProductInterface;
-use Magento\Catalog\Model\Product;
-use Magento\Eav\Model\Config as EavConfig;
-use Magento\Framework\App\ResourceConnection;
-use Magento\Framework\EntityManager\MetadataPool;
-use Psr\Log\LoggerInterface;
+use Magento\Catalog\Model\ResourceModel\Product\Action as ProductAction;
+use Magento\Store\Model\Store;
 
 class PurchaseRecencyStamper
 {
     private const CHUNK_SIZE = 500;
-    private const VALUE_TABLE = 'catalog_product_entity_datetime';
 
-    public function __construct(
-        private readonly ResourceConnection $resourceConnection,
-        private readonly EavConfig $eavConfig,
-        private readonly MetadataPool $metadataPool,
-        private readonly LoggerInterface $logger
-    ) {
+    public function __construct(private readonly ProductAction $productAction)
+    {
     }
 
     /**
      * @param int[] $productIds
-     * @return int rows written
+     * @return int products stamped
      */
     public function stamp(array $productIds, string $purchasedAt): int
     {
@@ -37,67 +28,14 @@ class PurchaseRecencyStamper
             return 0;
         }
 
-        $attributeId = $this->getAttributeId();
-
-        if ($attributeId === null) {
-            $this->logger->error('Goodahead_OrderSync: last_purchased_at is missing; run setup:upgrade.');
-
-            return 0;
+        foreach (array_chunk($productIds, self::CHUNK_SIZE) as $chunk) {
+            $this->productAction->updateAttributes(
+                $chunk,
+                [AddLastPurchasedAtAttribute::ATTRIBUTE_CODE => $purchasedAt],
+                Store::DEFAULT_STORE_ID
+            );
         }
 
-        $connection = $this->resourceConnection->getConnection();
-        $linkField = $this->metadataPool->getMetadata(ProductInterface::class)->getLinkField();
-        $table = $this->resourceConnection->getTableName(self::VALUE_TABLE);
-        $written = 0;
-
-        foreach (array_chunk($this->resolveLinkValues($productIds, $linkField), self::CHUNK_SIZE) as $chunk) {
-            $rows = [];
-
-            foreach ($chunk as $linkValue) {
-                $rows[] = [
-                    'attribute_id' => $attributeId,
-                    'store_id' => 0,
-                    $linkField => $linkValue,
-                    'value' => $purchasedAt,
-                ];
-            }
-
-            $written += $connection->insertOnDuplicate($table, $rows, ['value']);
-        }
-
-        return $written;
-    }
-
-    private function getAttributeId(): ?int
-    {
-        try {
-            $attribute = $this->eavConfig->getAttribute(Product::ENTITY, AddLastPurchasedAtAttribute::ATTRIBUTE_CODE);
-            $id = (int)$attribute->getAttributeId();
-
-            return $id > 0 ? $id : null;
-        } catch (\Throwable $e) {
-            return null;
-        }
-    }
-
-    /**
-     * Commerce with staging keys EAV values on row_id rather than entity_id. Asking the
-     * metadata pool costs one lookup and keeps this correct on both editions.
-     *
-     * @param int[] $productIds
-     * @return int[]
-     */
-    private function resolveLinkValues(array $productIds, string $linkField): array
-    {
-        if ($linkField === 'entity_id') {
-            return $productIds;
-        }
-
-        $connection = $this->resourceConnection->getConnection();
-        $select = $connection->select()
-            ->from($this->resourceConnection->getTableName('catalog_product_entity'), [$linkField])
-            ->where('entity_id IN (?)', $productIds);
-
-        return array_map('intval', $connection->fetchCol($select));
+        return count($productIds);
     }
 }

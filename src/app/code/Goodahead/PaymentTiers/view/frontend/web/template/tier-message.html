@@ -1,0 +1,6 @@
+<div class="message goodahead-payment-tier"
+     data-bind="visible: isVisible, css: {notice: isCardAvailable(), warning: !isCardAvailable()}"
+     role="alert"
+     style="display: none">
+    <div data-bind="text: message()"></div>
+</div>

@@ -118,6 +118,13 @@ Stripe webhook can announce the same order late, twice, out of order. So the gua
 ledger row per logical delivery with `UNIQUE KEY (order_id, event_type)` — the database decides,
 not a check-then-insert with a race in the middle.
 
+Duplicate protection is layered, and the two layers are independent. The Stripe module keeps
+its own `UNIQUE KEY` on the webhook event id, so a replayed webhook is answered "already
+processed" and never reaches this module at all. Deleting that row to force a genuine
+reprocess was tried, and the ledger still held one delivery — which is the point: the
+guarantee is derived from the order, not from the trigger, so it does not care whether a
+duplicate arrived by webhook, by queue redelivery, or by another save.
+
 Registration happens on `sales_order_save_after` behind a paid-state test, because every route
 to a paid order ends in a save. Over-triggering costs one indexed lookup; under-triggering loses
 an order silently. Registration and publishing both swallow their own failures, and a cron
@@ -163,6 +170,7 @@ What was observed rather than reasoned about:
 | Cancellation reaches finance | one order delivered `order_placed`, was cancelled, and delivered `order_cancelled` |
 | The stamp is not rolled back | that order's product still carries the `last_purchased_at` written at placement, five seconds before the cancellation |
 | The attribute stays out of the way | declared with `is_filterable`, `used_in_product_listing` and `is_searchable` all `0` |
+| A repeated webhook changes nothing | a real `payment_intent.succeeded`, forwarded by `stripe listen` and then replayed twice with a valid signature, left one ledger row, one invoice and the original stamp |
 
 This repository ships the modules; the throwaway scripts that produced those observations are
 not part of it.
@@ -212,11 +220,6 @@ not part of it.
   release are verified against the sandbox with a confirmed manual-capture intent, and the
   decision logic is unit-tested, but no payment has been pushed through an actual wallet UI —
   those need domain verification a local host cannot have.
-- **A repeated Stripe webhook.** The Definition of Done names this explicitly. Duplicate
-  delivery is exercised with duplicate queue messages and duplicate registration, and the
-  guarantee does not depend on where the duplicate came from — the unique key is derived from
-  the order, not from the trigger — but replaying a real webhook needs `stripe listen` against
-  a forwarded endpoint and was not run.
 - **Integration tests.** Both self-tests are scripts run by hand rather than by CI.
 - **A brand multiselect in the admin.** The tier table uses validated text columns; the brief
   puts admin UI beyond a `system.xml` section out of scope.
